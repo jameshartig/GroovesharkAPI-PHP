@@ -34,16 +34,13 @@ class gsUser extends gsAPI{
 	   }        
     }
     
-    public function setUsername($string) {
-        
+    public function setUsername($string) {        
         if (preg_match("/^([a-zA-Z0-9]+[\.\-_]?)+[a-zA-Z0-9]+$/",$string) === false){
-			trigger_error(__FUNCTION__." requires a valid username. The username provided was invalid.",E_USER_ERROR);
 			return false;
 		} else {
             $this->username = $string;
-            return true;
-        }
-        
+            return $string;
+        }        
     }
     
     public function getUsername() {
@@ -75,16 +72,13 @@ class gsUser extends gsAPI{
         }
     }
     
-    public function setUserID($int) {
-        
+    public function setUserID($int) {        
         if (preg_match("/^([0-9]){1,10}$/",$int) === false){
-			trigger_error(__FUNCTION__." requires a valid userID. The userID provided was invalid.",E_USER_ERROR);
 			return false;
 		} else {
             $this->userid = $int;
-            return true;
-        }
-        
+            return $int;
+        }        
     }
     
     public function getUserID() {
@@ -182,13 +176,12 @@ class gsUser extends gsAPI{
         }
     }
     
+    //TODO: make the name optional (save an API call)
 	private static function getUserProfileService(){
         if (!$this->getUserID() && !$this->getUsername()) {
             return null;
-        } else if (!$this->getUsername()) {
-            
         }
-		return sprintf("http://listen.grooveshark.com/#/user/%s/%u",strtolower($username),$userid);
+		return sprintf(parent::$listen_host."#/user/%s/%u",($this->getUsername() ? $this->getUsername() : "~"),$this->getUserID());
 	}
     
     public function getPlaylists() {

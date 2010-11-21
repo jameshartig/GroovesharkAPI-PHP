@@ -159,50 +159,6 @@ class gsAPI{
 	}    
     
 	/*
-	* Get playlist info from the playlistID
-	* All this function returns is the playlist name.
-	
-	Requirements: none
-	Static function	
-	
-	@param	integer	playlistID
-	*/
-	public static function getPlaylistInfo($playlistID){
-		if (!is_numeric($playlistID)){
-			trigger_error(__FUNCTION__." requires a valid playlistID. The playlistID provided was invalid.",E_USER_ERROR);
-			return false;
-		}		
-		
-		$return = self::apiCall('getPlaylistInfo',array('playlistID'=>$playlistID));
-		if (isset($return['decoded']['result']))
-			return $return['decoded']['result'];
-		else
-			return false;
-	}
-	
-	/*
-	* Get playlist URL from the playlistID
-	
-	Requirements: none
-	Static function	
-	
-	@param	integer	playlistID
-	*/
-	public static function getPlaylistURL($playlistID){
-		if (!is_numeric($playlistID)){
-			trigger_error(__FUNCTION__." requires a valid playlistID. The playlistID provided was invalid.",E_USER_ERROR);
-			return false;
-		}		
-		
-		$return = self::apiCall('getPlaylistURLFromPlaylistID',array('playlistID'=>$playlistID));
-		if (isset($return['decoded']['result']))
-			return $return['decoded']['result'];
-		else
-			return false;
-	}
-	
-	
-	/*
 	* Retrieves information from the given album
 	
 	Requirements: none
