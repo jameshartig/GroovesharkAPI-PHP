@@ -144,7 +144,7 @@ class gsAPI{
 			}
 		}
         
-        if (!$user->getUsername() || $user->getToken()) {
+        if (!$user->getUsername() || !$user->getToken()) {
             return false;
         }
 

@@ -73,7 +73,7 @@ class gsUser extends gsAPI{
     }
     
     public function setUserID($int) {        
-        if (preg_match("/^([0-9]){1,10}$/",$int) === false){
+        if (!$int || preg_match("/^([0-9]){1,10}$/",$int) === false){
 			return false;
 		} else {
             $this->userid = $int;
@@ -236,7 +236,7 @@ class gsUser extends gsAPI{
     }
     
     public function setTokenFromPassword($password) {
-        $this->token = md5($username.md5($password));
+        $this->token = md5($this->getUsername().md5($password));
         return $this->token;
     }
     
@@ -245,7 +245,9 @@ class gsUser extends gsAPI{
     }
     
     public function authenticate() {
-        return $parent->authenticateUser($this);
+        if ($this->parent->authenticateUser($this) === false) {
+            return false;
+        }
     }
     
     private function checkEmpty($var) {
