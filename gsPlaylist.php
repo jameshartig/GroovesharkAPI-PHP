@@ -48,7 +48,7 @@ class gsPlaylist extends gsAPI{
         if (!empty($this->name)) {
             return $this->name;
         }
-        if ($this->checkEmpty($this->getPlaylistID())) {
+        if ($this->checkEmpty($this->playlistid)) {
             $this->importPlaylistData($this->getPlaylistInfo($this->getPlaylistID()));
             return $this->tsmodified;
         }

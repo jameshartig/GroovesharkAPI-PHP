@@ -47,7 +47,7 @@ class gsUser extends gsAPI{
         if (!empty($this->username)) {
             return $this->username;
         }
-        if ($this->checkEmpty($this->getUserID())) {
+        if ($this->checkEmpty($this->userid)) {
            if ($this->getUserInfoFromUserID()) {
                 return $this->username;
            }
@@ -85,7 +85,7 @@ class gsUser extends gsAPI{
         if (is_numeric($this->userid)) {
             return $this->userid;
         }
-        if ($this->checkEmpty($this->getUsername())) {
+        if ($this->checkEmpty($this->username)) {
             return $this->getUserIDFromUsername($this->getUsername());
         }
         return null;
