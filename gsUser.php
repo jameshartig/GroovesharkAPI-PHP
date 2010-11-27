@@ -22,7 +22,7 @@ class gsUser extends gsAPI{
     private $library;
     private $playlists;
 	
-	function gsUser($parent=null){
+	function gsUser(&$parent=null){
 	   if (is_object($parent)) {
 	       $this->parent = $parent;
 	   }
@@ -91,7 +91,7 @@ class gsUser extends gsAPI{
         return null;
     }
     
-	public function getUserIDFromUsername($username = null){
+	private function getUserIDFromUsername($username = null){
         if ($username) {
            $this->setUsername($username);
         }
@@ -242,6 +242,10 @@ class gsUser extends gsAPI{
     
     public function getToken() {
         return $this->token;
+    }
+    
+    public function authenticate() {
+        return $parent->authenticateUser($this);
     }
     
     private function checkEmpty($var) {

@@ -14,7 +14,7 @@ class gsPlaylist extends gsAPI{
     private $songs;
     private $tsmodified;
 	
-	function gsPlaylist($parent=null){
+	function gsPlaylist(&$parent=null){
 	   if (is_object($parent)) {
 	       $this->parent = $parent;
 	   }

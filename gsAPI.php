@@ -44,8 +44,7 @@ class gsAPI{
         if (!class_exists("gsUser")) {
             require("gsUser.php");
         }
-        $u = new gsUser();
-        $u->spawnAble($this);
+        $u = new gsUser($this);
         return $u;
     }
     
@@ -193,13 +192,13 @@ class gsAPI{
 	@param	integer	playlistID
 	@param	integer	limit, optional
 	*/
-	public static function getPlaylistSongs($playlistID,$limit=null){
+	public static function getPlaylistSongs($playlistID, $limit=null){
 		if (!is_numeric($playlistID)){
 			trigger_error(__FUNCTION__." requires a valid playlistID. The playlistID provided was invalid.",E_USER_ERROR);
 			return false;
 		}		
 		
-		$return = self::apiCall('getPlaylistSongs',array('playlistID'=>$playlistID,'limit'=>$limit));
+		$return = self::apiCall('getPlaylistSongs',array('playlistID'=>$playlistID, 'limit'=>$limit));
 		if (isset($return['decoded']['result']))
 			return $return['decoded']['result'];
 		else
@@ -221,7 +220,7 @@ class gsAPI{
 	@param	integer	limit, optional
 	@param	bool	unique, whether we should attempt to filter out duplicate songs by their titles
 	*/
-	public static function getAlbumSongs($albumid,$limit=null,$unique=false){
+	public static function getAlbumSongs($albumid, $limit=null, $unique=false){
 		if (!is_numeric($albumid)){
 			trigger_error(__FUNCTION__." requires a valid albumID. The albumID provided was invalid.",E_USER_ERROR);
 			return false;
@@ -236,15 +235,15 @@ class gsAPI{
 						if (isset($songs[$song['SongName']]))
 							unset($return['decoded']['result'][0][$songs[$song['SongName']][0]]); //remove old result
 							
-						if (!empty($song['CoverArtFilename']))
-							$song['CoverArtLink'] = self::$pic_host.$song['CoverArtFilename']; //add filename with the actual url to the array
+						//if (!empty($song['CoverArtFilename']))
+						//	$song['CoverArtLink'] = self::$pic_host.$song['CoverArtFilename']; //add filename with the actual url to the array
 						$songs[$song['SongName']] = array($k,$song['IsVerified']);
 					}else{
 						unset($return['decoded']['result'][0][$k]);
 					}
 				}else{
-					if (!empty($song['CoverArtFilename']))
-						$song['CoverArtLink'] = self::$pic_host.$song['CoverArtFilename']; //add filename with the actual url to the array
+					//if (!empty($song['CoverArtFilename']))
+					//	$song['CoverArtLink'] = self::$pic_host.$song['CoverArtFilename']; //add filename with the actual url to the array
 				}
 			}
 			return $return['decoded']['result'][0];
@@ -307,7 +306,7 @@ class gsAPI{
 			return false;
 		}
 		
-		$return = self::apiCall('getUserPlaylists',array('sessionID'=>$this->session,'limit'=>$limit));
+		$return = self::apiCall('getUserPlaylists',array('sessionID'=>$this->session, 'limit'=>$limit));
 		//var_dump($return);
 		if (isset($return['decoded']['result']))
 			return $return['decoded']['result'];
@@ -330,7 +329,7 @@ class gsAPI{
 			return false;
 		}		
 		
-		$return = self::apiCall('getUserPlaylistsByUserID',array('userID'=>$userid,'limit'=>$limit));
+		$return = self::apiCall('getUserPlaylistsByUserID',array('userID'=>$userid, 'limit'=>$limit));
 		//var_dump($return);
 		if (isset($return['decoded']['result']['playlists']))
 			return $return['decoded']['result']['playlists'];
@@ -358,7 +357,7 @@ class gsAPI{
 			return false;
 		}
 		
-		$return = self::apiCall('addUserFavoriteSong',array('sessionID'=>$this->session,'songID'=>$song));
+		$return = self::apiCall('addUserFavoriteSong',array('sessionID'=>$this->session, 'songID'=>$song));
 		if (isset($return['decoded']['result']['success']))
 			return $return['decoded']['result'];
 		else
@@ -496,7 +495,7 @@ class gsAPI{
 			return false;
 		}
 
-		$return = self::apiCall('createPlaylist',array('sessionID'=>$this->session,'name'=>$name,'songIDs'=>self::formatSongIDs($songs)));
+		$return = self::apiCall('createPlaylist',array('sessionID'=>$this->session, 'name'=>$name, 'songIDs'=>self::formatSongIDs($songs)));
 		//var_dump($return);
 		if (isset($return['decoded']['result']))
 			return $return['decoded']['result'];
@@ -565,7 +564,7 @@ class gsAPI{
 			return false;
 		}
 
-		$return = self::apiCall('setPlaylistSongs',array('sessionID'=>$this->session,'playlistID'=>$playlist,'songIDs'=>self::formatSongIDs($songs)));
+		$return = self::apiCall('setPlaylistSongs',array('sessionID'=>$this->session, 'playlistID'=>$playlist, 'songIDs'=>self::formatSongIDs($songs)));
 		//var_dump($return);
 		if (isset($return['decoded']['result']))
 			return $return['decoded']['result'];
@@ -711,34 +710,14 @@ class gsAPI{
 			return false;
 		}
 		
-		$return = self::apiCall('getUserFavoriteSongs',array('sessionID'=>$this->session,'limit'=>$limit));
+		$return = self::apiCall('getUserFavoriteSongs',array('sessionID'=>$this->session, 'limit'=>$limit));
 		//var_dump($return);
 		if (isset($return['decoded']['result']['songs']))
 			return $return['decoded']['result']['songs'];
 		else
 			return false;
 	}
-	
-	/*
-	* Returns more detailed information about the current user
-	* This requires higher level access and is generally unavaliable.
-	
-	Requirements: session, extended access
-	*/
-	public function getExtendedUserInfoFromSessionID(){
-		if (empty($this->session)){
-			trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-			return false;
-		}
 		
-		$return = self::apiCall('getExtendedUserInfoFromSessionID',array('sessionID'=>$this->session));
-		/* this method has not yet been tested for the result set */
-		if (isset($return['decoded']['result']))
-			return $return['decoded']['result'];
-		else
-			return false;
-	}
-	
 	/*
 	* Returns the Country from the IP Address it was requested from
 	
@@ -784,13 +763,13 @@ class gsAPI{
 	
 	Returns an array with songs subarray
 	*/
-	public static function getSongSearchResults($query,$limit=null,$page=null){
+	protected static function getSongSearchResults($query, $limit=null, $page=null){
 		if (empty($query)){
 			trigger_error(__FUNCTION__." requires a query. No query was found.",E_USER_ERROR);
 			return false;
 		}
 		
-		$return = self::apiCall('getSongSearchResultsEx',array('query'=>$query,'limit'=>$limit,'page'=>$page));
+		$return = self::apiCall('getSongSearchResultsEx',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
 		if (isset($return['decoded']['result']['songs']))
 			return $return['decoded']['result'];
 		else

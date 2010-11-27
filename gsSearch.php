@@ -8,16 +8,23 @@
 class gsSearch extends gsAPI{
 	
     private $parent;
-	public $artist = null;
-	public $album = null;
-	public $title = null;
-	private $listing;
+	private $artist = null;
+	private $album = null;
+	private $title = null;
+    private $changed = true;
+	private $exact;
 	private $results;
 	private $gsUserPass = null;
 	
-	function gsSearch($password=null){
-		$this->gsUserPass = $password;
+	function gsSearch(&$parent=null){
+	   if (is_object($parent)) {
+	       $this->parent = $parent;
+	   }
 	}
+    
+    function setAPISharkPass($password=null) {
+        $this->gsUserPass = $password;
+    }
     
     protected function spawnAble(&$parent=null){
 	   if (is_object($parent)) {
@@ -26,14 +33,17 @@ class gsSearch extends gsAPI{
     }
 	
 	public function setArtist($artist){
+        $this->changed = true;
 		$this->artist = $artist;
 	}
 	
 	public function setTitle($title){
+        $this->changed = true;
 		$this->title = $title;
 	}
 	
 	public function setAlbum($album){
+        $this->changed = true;
 		$this->album = $album;
 	}
 	
@@ -43,79 +53,100 @@ class gsSearch extends gsAPI{
 		$this->title = null;
 		$this->listing = null;
 		$this->results = null;
+        $this->changed = true;
 	}
 	
-	public function getSingleSongResult(){
+    public function singleSongSearch() {
+        
+    }
+    
+	private function performSongSearch($max=null){
 		//build request
 		$query_str = "";
-		$total=0;
 		if (!empty($this->title)){
-			$total++;
-			$query_str .= " song: ".$this->title;
+			$query_str .= " song:".$this->title;
 		}
 		if (!empty($this->artist)){
-			$total++;
-        	$query_str .= " artist: ".$this->artist;
+        	$query_str .= " artist:".$this->artist;
  		}
 		 if (!empty($this->album)){
-			$total++;
-        	$query_str .= " album: ".$this->album;
+        	$query_str .= " album:".$this->album;
   		}
   		if (empty($query_str))
   			return false;
   		
   		$this->results=null;
-  		$this->listing = array(array(),array());
-  				
-		$artist_parse = explode(" ",$this->artist);
-		$album_parse = explode(" ",trim(substr($this->album,0,(($pos = strpos($this->album,"("))==0 ? $pos : (($pos = strpos($this->album,"["))==0 ? $pos  : strlen($this->album)) )))); //we want to keep everying up to ( or [ becasue we don't care about "Deluxe Edition" or "Single" or anything similar
-		$title_parse = explode(" ",$this->title);
-		
-		$album_ranks = array(); //temporary storage to avoid calling calculate score a million times
-		$artist_ranks = array(); //temporary storage to avoid calling calculate score a million times
+        $this->exact=null;
   		
-  		for($page=1;$page<=5;$page++){
-			$songs = gsAPI::getSongSearchResults(trim($query_str),100,$page);
-			if ($songs === false || !isset($songs['songs']) || count($songs['songs'])<1)
-				break;
-
-			$this->appendResults($songs['songs']);
-			
-			foreach ($songs['songs'] AS $song){
-				if (!isset($this->listing[0][$song['SongID']])){
-					$score = 0;
-					if (!empty($this->title))
-						$score += self::calculateScore(array($this->title,$title_parse),$song['SongName'],8/(9+$total),($total==1?true:false));
-					if (!empty($this->artist)){
-						if (!isset($artist_ranks[strtolower($song['ArtistName'])]))
-							$artist_ranks[strtolower($song['ArtistName'])] = self::calculateScore(array($this->artist,$artist_parse),$song['ArtistName'],7/(9+$total),($total==1?true:false));
-						$score += $artist_ranks[strtolower($song['ArtistName'])];					
-					}
-					if (!empty($this->album)){
-						if (!isset($album_ranks[strtolower($song['AlbumName'])]))
-							$album_ranks[strtolower($song['AlbumName'])] = self::calculateScore(array($this->album,$album_parse),$song['AlbumName'],4/(9+$total),($total==1?true:false));
-						$score += $album_ranks[strtolower($song['AlbumName'])];					
-					}
-					if ($song['IsVerified'])
-						$score *= 1.50; //50% boost for anything verified
-					if ($score > .005){
-						$this->listing[0][$song['SongID']] = $score;
-						$this->listing[1][$song['SongID']] = $song;
-					}
-				}
-			}
-			if ($songs['pager']['hasNextPage'] == false || (count($this->listing[0]) && max($this->listing[0])>.70)) //if its greater than 70% we pretty much have a match
-				break;
-		}	
-		
-		if (count($this->listing[0])<1)
-			return false;
-		else{			
-			arsort($this->listing[0]);
-			if (reset($this->listing[0])<.01)
-				return false; //this result is basically worthless
-			return $this->listing[1][key($this->listing[0])];
-		}
+        if ($this->changed || $max > count($this->results)) {
+            $this->changed = false;
+      		for($page=1;$page<=2;$page++){
+    			$songs = parent::getSongSearchResults(trim($query_str),($max ? $max : 91),null,($page-1)*90);
+    			if ($songs === false || !isset($songs['songs']) || count($songs['songs'])<1) {
+    				break;
+                }
+    
+                if (count($songs['songs'])>90 && (!$max || $max > 100)){
+                    array_pop($songs['songs']);
+                }
+                
+                $this->appendResults($songs['songs']);
+                
+                if (count($songs['songs'])==1 && $page==1){
+                    return $songs['songs'][0];
+                }
+    			
+                if (!$this->exact) {
+        			foreach ($songs['songs'] AS $song){
+        			     //check for exact match
+                        if (!empty($this->title) && !empty($this->artist) && !empty($this->album)) {
+                            if (($this->title == $song['SongName'] || $this->title == $song['SongID']) && ($this->album == $song['AlbumName'] || $this->album == $song['AlbumID']) && ($this->artist == $song['ArtistName'] || $this->artist == $song['ArtistID'])) {
+                                $this->exact = $song;
+                                break;
+                            }
+                        } elseif (!empty($this->title) && !empty($this->artist)) {
+                            if (($this->title == $song['SongName'] || $this->title == $song['SongID']) && ($this->artist == $song['ArtistName'] || $this->artist == $song['ArtistID'])) {
+                                $this->exact = $song;
+                                break;
+                            }
+                        } elseif (!empty($this->title) && !empty($this->album)) {
+                            if (($this->title == $song['SongName'] || $this->title == $song['SongID']) && ($this->album == $song['AlbumName'] || $this->album == $song['AlbumID'])) {
+                                $this->exact = $song;
+                                break;
+                            }
+                        } elseif (!empty($this->artist) && !empty($this->album)) {
+                            if (($this->album == $song['AlbumName'] || $this->album == $song['AlbumID']) && ($this->artist == $song['ArtistName'] || $this->artist == $song['ArtistID'])) {
+                                $this->exact = $song;
+                                break;
+                            }
+                        } elseif (!empty($this->title)) {
+                            if (($this->title == $song['SongName'] || $this->title == $song['SongID'])) {
+                                $this->exact = $song;
+                                break;
+                            }
+                        } elseif (!empty($this->artist)) {
+                            if (($this->artist == $song['ArtistName'] || $this->artist == $song['ArtistID'])) {
+                                $this->exact = $song;
+                                break;
+                            }
+                        } elseif (!empty($this->album)) {
+                            if (($this->album == $song['AlbumName'] || $this->album == $song['AlbumID'])) {
+                                $this->exact = $song;
+                                break;
+                            }
+                        }
+        			}
+                }
+    			if (count($songs['songs'])<90 || ($max && ($this->results) > $max)) {
+    				break;
+                }
+            }
+        }
+        if ($max) {
+          return array_slice($this->results, 0, $max, true);
+        } else {
+		  return $this->results;
+        }
 	}
 	
 	public function getSongResults(){}
