@@ -23,16 +23,12 @@ class gsUser extends gsAPI{
     private $playlists;
 	
 	function gsUser(&$parent=null){
-	   if (is_object($parent)) {
-	       $this->parent = $parent;
-	   }
+	   if (!$parent) {
+	       $this->parent = gsAPI::getInstance();
+       } else {
+            $this->parent = $parent;
+       }
 	}
-    
-    protected function spawnAble(&$parent=null){
-	   if (is_object($parent)) {
-	       $this->parent = $parent;
-	   }        
-    }
     
     public function setUsername($string) {        
         if (preg_match("/^([a-zA-Z0-9]+[\.\-_]?)+[a-zA-Z0-9]+$/",$string) === false){
@@ -47,22 +43,23 @@ class gsUser extends gsAPI{
         if (!empty($this->username)) {
             return $this->username;
         }
-        if ($this->checkEmpty($this->userid)) {
+        /*if ($this->checkEmpty($this->userid)) {
            if ($this->getUserInfoFromUserID()) {
                 return $this->username;
            }
-        }
+        }*/
         if (is_object($this->parent) && $this->checkEmpty($this->parent->getSession())) {
             $this->importUserData($this->parent->getUserInfoFromSessionID());
             return $this->username;
         }
         return null;
     }
+        
     
     //this method is access controlled
-    private function getUserInfoFromUserID() {
+    public function getUserInfoFromUserID() {
         if ($this->getUserID()) {
-    		$return = parent::apiCall('getUserInfoFromUserID',array('UserID'=>$this->getUserID()));
+    		$return = parent::apiCall('getUserInfoFromUserID', array('UserID'=>$this->getUserID()));
     		if (isset($return['decoded']['result'][0]['UserID'])) {
                 $this->importUserData($return['decoded']['result'][0]);
             	return $return['decoded']['result'][0];

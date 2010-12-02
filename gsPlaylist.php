@@ -15,19 +15,15 @@ class gsPlaylist extends gsAPI{
     private $tsmodified;
 	
 	function gsPlaylist(&$parent=null){
-	   if (is_object($parent)) {
-	       $this->parent = $parent;
-	   }
+	   if (!$parent) {
+	       $this->parent = gsAPI::getInstance();
+       } else {
+            $this->parent = $parent;
+       }
 	}
     
-    protected function spawnAble(&$parent=null){
-	   if (is_object($parent)) {
-	       $this->parent = $parent;
-	   }        
-    }
-    
     public function setPlaylistID($id) {
-        if (preg_match("/^([0-9]){1,16}$/",$id) === false){
+        if (!is_numeric($id)){
 			return false;
 		} else {
             $this->playlistid = $id;
@@ -58,7 +54,7 @@ class gsPlaylist extends gsAPI{
     public static function getPlaylistInfo($playlistID){
 		if (!is_numeric($playlistID)){
 			return false;
-		}		
+		}
 		
 		$return = parent::apiCall('getPlaylistInfo',array('playlistID'=>$playlistID));
 		if (isset($return['decoded']['result'])) {
@@ -85,7 +81,7 @@ class gsPlaylist extends gsAPI{
     public function getModified() {
         return $this->tsmodified;
         /*if ($this->checkEmpty($this->getPlaylistID())) {
-            $this->importPlaylistData(parent::getPlaylistInfo($this->getPlaylistID()));
+            $this->importPlaylistData($this->parent::getPlaylistInfo($this->getPlaylistID()));
             return $this->tsmodified;
         }
         return null;*/
@@ -114,11 +110,43 @@ class gsPlaylist extends gsAPI{
 			return false;
 		}		
 		
-		$return = parent::apiCall('getPlaylistURLFromPlaylistID',array('playlistID'=>$playlistID));
-		if (isset($return['decoded']['result']))
+		$return = parent::apiCall('getPlaylistURLFromPlaylistID', array('playlistID' => $playlistID));
+		if (isset($return['decoded']['result'])) {
 			return $return['decoded']['result'];
-		else
+		} else {
 			return false;
+        }
+	}
+    
+    private function setSongs($songs) {
+        if (is_array($songs)) {
+            $this->songs = $songs;
+        }
+    }
+    
+    public function getSongs() {
+        if ($this->songs) {
+            return $this->songs;
+        }
+        
+        if ($this->checkEmpty($this->getPlaylistID())) {
+            return $this->getPlaylistSongs();
+        }
+        return false;
+    }
+    
+    private function getPlaylistSongs($limit=null){
+		if (!is_numeric($this->getPlaylistID())){
+			return false;
+		}
+		
+		$return = parent::apiCall('getPlaylistSongs', array('playlistID'=>$this->getPlaylistID(), 'limit'=>$limit));
+		if (isset($return['decoded']['result'])) {
+            $this->setSongs($return['decoded']['result']);
+			return $this->songs;
+		} else {
+			return false;
+        }
 	}
     
     protected function importPlaylistData($data) {
@@ -135,6 +163,22 @@ class gsPlaylist extends gsAPI{
         } else {
             return false;
         }
+    }
+    
+    private function checkEmpty($var) {
+        if ($var === false){
+            return false;
+        }
+        if ($var === null) {
+            return false;
+        }
+        if ($var === "") {
+            return false;
+        }
+        if ($var === 0) {
+            return false;
+        }
+        return true;
     }
     
 }

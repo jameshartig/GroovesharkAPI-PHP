@@ -23,6 +23,8 @@ class gsAPI{
 	private static $ws_key;
 	private static $ws_secret;
 	private $session;
+    
+    private static $instance;
 	
 	/*	
 	* Construct gsapi
@@ -38,21 +40,18 @@ class gsAPI{
 		
 		if (empty(self::$ws_key) || empty(self::$ws_secret))
 			trigger_error("gsapi class requires a valid key and secret.",E_USER_ERROR);
-	} 
-	
-    public function spawnGsUser() {
-        if (!class_exists("gsUser")) {
-            require("gsUser.php");
+
+        if (!isset(self::$instance)) {
+            self::$instance = $this;
         }
-        $u = new gsUser($this);
-        return $u;
-    }
+	}
     
-    public function getGsUser() {
-        if (!class_exists("gsUser")) {
-            require("gsUser.php");
+    static function getInstance() {
+        if (!isset(self::$instance)) {
+            $c = __CLASS__;
+            self::$instance = new $c;
         }        
-        return new gsUser($this);
+        return self::$instance;
     }
     
     /*	
@@ -177,34 +176,7 @@ class gsAPI{
 		else
 			return false;
 	}
-	
-	
-	/*
-	* Get playlist songs from the playlistID
-	
-	Return: array { [n]=> array(6) { ["SongID"]=> int ["SongName"]=> string ["ArtistID"]=> int ["ArtistName"]=> string ["AlbumName"]=> string ["Sort"]=> int) }
-	
-	TODO: Make sure Sort returns sorted
-	
-	Requirements: none
-	Static function	
-	
-	@param	integer	playlistID
-	@param	integer	limit, optional
-	*/
-	public static function getPlaylistSongs($playlistID, $limit=null){
-		if (!is_numeric($playlistID)){
-			trigger_error(__FUNCTION__." requires a valid playlistID. The playlistID provided was invalid.",E_USER_ERROR);
-			return false;
-		}		
 		
-		$return = self::apiCall('getPlaylistSongs',array('playlistID'=>$playlistID, 'limit'=>$limit));
-		if (isset($return['decoded']['result']))
-			return $return['decoded']['result'];
-		else
-			return false;
-	}
-	
 	/*
 	* Get songs on an album from the albumID
 	
@@ -879,7 +851,7 @@ class gsAPI{
 	/* 
 	* Private call to grooveshark API, this is where the magic happens!
 	*/ 
-	private static function apiCall($method,$args=array(),$https=false){	
+	protected static function apiCall($method,$args=array(),$https=false){	
 			
 		$args['sig'] = self::createMessageSig($method, $args, self::$ws_secret);
 		$args['wsKey'] = self::$ws_key;
