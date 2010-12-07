@@ -13,6 +13,7 @@ class gsPlaylist extends gsAPI{
     private $name;
     private $songs;
     private $tsmodified;
+    private $user;
 	
 	function gsPlaylist(&$parent=null){
 	   if (!$parent) {
@@ -40,8 +41,8 @@ class gsPlaylist extends gsAPI{
         return $name;
     }
     
-    public function getName() {
-        if (!empty($this->name)) {
+    public function getName($fetch=true) {
+        if (!empty($this->name) || !$fetch) {
             return $this->name;
         }
         if ($this->checkEmpty($this->playlistid)) {
@@ -51,8 +52,8 @@ class gsPlaylist extends gsAPI{
         return null;
     }
     
-    public static function getPlaylistInfo($playlistID){
-		if (!is_numeric($playlistID)){
+    private function getPlaylistInfo($playlistID, $fetch=true){
+		if (!is_numeric($playlistID) || !$fetch){
 			return false;
 		}
 		
@@ -87,6 +88,15 @@ class gsPlaylist extends gsAPI{
         return null;*/
     }
     
+    private function setUser($user) {
+        $this->user = $user;
+        return true;
+    }
+    
+    public function getUser() {
+        return $this->user;
+    }
+    
     private function setURL($url) {
         $this->url = $url;
         return $url;
@@ -118,14 +128,14 @@ class gsPlaylist extends gsAPI{
         }
 	}
     
-    private function setSongs($songs) {
+    public function setSongs($songs) {
         if (is_array($songs)) {
             $this->songs = $songs;
         }
     }
     
-    public function getSongs() {
-        if ($this->songs) {
+    public function getSongs($fetch=true) {
+        if ($this->songs || !$fetch) {
             return $this->songs;
         }
         

@@ -15,7 +15,7 @@ class gsUser extends gsAPI{
     private $sex;
     private $dob;
     private $picture;
-    private $premium;
+    private $premium; //1 = plus, 2 = anywhere
     private $profile;
     private $parent;
     private $favorites;
@@ -39,8 +39,8 @@ class gsUser extends gsAPI{
         }        
     }
     
-    public function getUsername() {
-        if (!empty($this->username)) {
+    public function getUsername($fetch=true) {
+        if (!empty($this->username) || !$fetch) {
             return $this->username;
         }
         /*if ($this->checkEmpty($this->userid)) {
@@ -78,8 +78,8 @@ class gsUser extends gsAPI{
         }        
     }
     
-    public function getUserID() {
-        if (is_numeric($this->userid)) {
+    public function getUserID($fetch=true) {
+        if (is_numeric($this->userid) || !$fetch) {
             return $this->userid;
         }
         if ($this->checkEmpty($this->username)) {
@@ -103,20 +103,23 @@ class gsUser extends gsAPI{
         }
 	}
     
-    public function getPremium() {
-        if (is_bool($this->premium)) {
-            return $this->premium;
-        } else {
-            return null;
-        }
-    }
-    
-    protected function setPremium($bool) {
-        if (is_bool($bool)) { 
-            $this->premium = $bool;
+    //1 = Plus, 2 = Anywhere
+    protected function setLevel($int) {
+        if (is_numeric($int) && $int < 2) { 
+            $this->premium = $int;
             return true;
         }
         return false;
+    }
+    
+    public function getLevel($fetch=true) {
+        if (is_numeric($this->premium) || !$fetch) {
+            return $this->premium;
+        }
+        if (is_object($this->parent) && $this->checkEmpty($this->parent->getSession())) {
+            $this->importUserData($this->parent->getUserInfoFromSessionID());
+            return $this->username;
+        }
     }   
     
     private function setPicture($file) {
@@ -181,13 +184,21 @@ class gsUser extends gsAPI{
 		return sprintf(parent::$listen_host."#/user/%s/%u",($this->getUsername() ? $this->getUsername() : "~"),$this->getUserID());
 	}
     
-    public function getPlaylists() {
-        if (is_array($this->playlists)) {
+    public function getPlaylists($fetch=true) {
+        if (is_array($this->playlists) || $fetch) {
             return $this->playlists;
         }
         if ($this->checkEmpty($this->getUserID())) {
-            $this->playlists = $this->parent->getUserPlaylists();
-            return $this->playlists;
+            $playlists = $this->parent->getUserPlaylists();
+            $aPlaylists = array();
+            if ($playlists) {
+                foreach($playlists as $playlist) {
+                    $p = new gsPlaylist();
+                    $p->importPlaylistData($playlist);
+                    $aPlaylists[] = $p;
+                }                
+            }
+            return $playlists;
         }
         return null;
     }
@@ -200,8 +211,17 @@ class gsUser extends gsAPI{
             if (isset($data['Username'])) {
                 $this->setUsername($data['Username']);
             }
-            if (isset($data['IsPremium'])) {
-                $this->setPremium($data['IsPremium']);
+            //if (isset($data['IsPremium'])) {
+            //    $this->setPremium($data['IsPremium']);
+            //}
+            if (isset($data['IsAnywhere']) && $data['IsAnywhere']) {
+                $this->setLevel(2);
+            }
+            if (isset($data['IsPlus']) && $data['IsPlus']) {
+                $this->setLevel(1);
+            }
+            if (isset($data['Level'])) { //custom gsUser field
+                $this->setLevel($data['Level']);
             }
             if (isset($data['FName'])) {
                 $this->setName($data['FName']);
@@ -223,10 +243,6 @@ class gsUser extends gsAPI{
         }
     }
     
-    protected function importPlaylists($data) {
-        
-    }
-    
     public function setToken($token) {
         $this->token = $token;
         return $this->token;
@@ -244,6 +260,8 @@ class gsUser extends gsAPI{
     public function authenticate() {
         if ($this->parent->authenticateUser($this) === false) {
             return false;
+        } else {
+            return true;
         }
     }
     
