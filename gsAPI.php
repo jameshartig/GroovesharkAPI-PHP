@@ -137,7 +137,7 @@ class gsAPI{
 	Requirements: session
 	*/
 	public function authenticateUser(gsUser $user){
-		if (empty($this->session)){
+		if (!$this->session){
 			if (!$this->startSession()) {
                 return false;
 			}

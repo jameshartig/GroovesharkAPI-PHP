@@ -88,7 +88,7 @@ class gsPlaylist extends gsAPI{
         return null;*/
     }
     
-    private function setUser($user) {
+    public function setUser($user) {
         $this->user = $user;
         return true;
     }
