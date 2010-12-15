@@ -22,6 +22,31 @@ class gsPlaylist extends gsAPI{
             $this->parent = $parent;
        }
 	}
+    // get all the info for a playlist
+    //YOU MUST CAST BACK INTO gsPlaylist USING importPlaylistData
+    public static function getPlaylistInfo($playlistID){
+		if (!is_numeric($playlistID)){
+			return false;
+		}
+		
+		$return = parent::apiCall('getPlaylistInfo',array('playlistID'=>$playlistID));
+		if (isset($return['decoded']['result'])) {
+			return $return['decoded']['result'];
+		} else {
+			return false;
+        }
+	}
+    
+    function toArray() {
+        $array = array();
+        if ($this->getPlaylistID()) $array['PlaylistID'] = $this->getPlaylistID();
+        if ($this->getName(false)) $array['Name'] = $this->getName(false);
+        if ($this->getURL(false)) $array['Url'] = $this->getURL(false);
+        if ($this->getSongs(false) !== null) $array['Songs'] = $this->getSongs(false);
+        if ($this->getModified()) $array['ModifiedTime'] = $this->getModified();
+        if ($this->getUser()) $array['User'] = $this->getUser();
+        return $array;
+    }
     
     public function setPlaylistID($id) {
         if (!is_numeric($id)){
@@ -46,29 +71,15 @@ class gsPlaylist extends gsAPI{
             return $this->name;
         }
         if ($this->checkEmpty($this->playlistid)) {
-            $this->importPlaylistData($this->getPlaylistInfo($this->getPlaylistID()));
+            $this->importPlaylistData(self::getPlaylistInfo($this->getPlaylistID()));
             return $this->tsmodified;
         }
         return null;
     }
-    
-    private function getPlaylistInfo($playlistID, $fetch=true){
-		if (!is_numeric($playlistID) || !$fetch){
-			return false;
-		}
-		
-		$return = parent::apiCall('getPlaylistInfo',array('playlistID'=>$playlistID));
-		if (isset($return['decoded']['result'])) {
-            $this->importPlaylistData($return['decoded']['result']);
-			return $return['decoded']['result'];
-		} else {
-			return false;
-        }
-	}
-    
-    private function setModified($val) {
+        
+    public function setModified($val) {
         if (is_numeric($val)) { //assume its Unix time
-            $this->tsmodified;
+            $this->tsmodified = $val;
         } else {
             if (($time = strtotime($val)) === false) {
                 return false;
@@ -81,8 +92,9 @@ class gsPlaylist extends gsAPI{
     
     public function getModified() {
         return $this->tsmodified;
+        //need to work with skyler on getting last Modified included
         /*if ($this->checkEmpty($this->getPlaylistID())) {
-            $this->importPlaylistData($this->parent::getPlaylistInfo($this->getPlaylistID()));
+            $this->importPlaylistData(self::getPlaylistInfo($this->getPlaylistID()));
             return $this->tsmodified;
         }
         return null;*/
@@ -93,7 +105,7 @@ class gsPlaylist extends gsAPI{
         return true;
     }
     
-    public function getUser() {
+    public function getUser() { //should we cast as gsUser?
         return $this->user;
     }
     
@@ -103,9 +115,10 @@ class gsPlaylist extends gsAPI{
     }
     
     //TODO: make the name optional (save an API call)
-    public function getURL() {
-        if ($this->getPlaylistID()) {
-            return sprintf(parent::$listen_host."#/playlist/%s/%u",($this->getName() ? $this->getName() : "~"),$this->getPlaylistID());
+    public function getURL($fetch=true) {
+        if (($fetch || (!$fetch && $this->getPlaylistID(false) && $this->getPlaylistID(false)))  && $this->getPlaylistID()) {
+            //getPlaylistUrlFromPlaylistID?
+            return sprintf(parent::$listen_host."playlist/%s/%u",($this->getName() ? str_replace(array("-", "!", "  "," "), array("", "", "_", "_"), $this->getName()) : "-"),$this->getPlaylistID());
         } else {
             return null;
         }
@@ -159,7 +172,7 @@ class gsPlaylist extends gsAPI{
         }
 	}
     
-    protected function importPlaylistData($data) {
+    public function importPlaylistData($data) {
         if (is_array($data)) {
             if (isset($data['PlaylistID'])) {
                 $this->setPlaylistID($data['PlaylistID']);
@@ -170,6 +183,16 @@ class gsPlaylist extends gsAPI{
             if (isset($data['TSModified'])) {
                 $this->setModified($data['TSModified']);
             }
+            if (isset($data['ModifiedTime'])) { //gsPlaylist custom field
+                $this->setModified($data['ModifiedTime']);
+            }
+            if (isset($data['Songs'])) { //gsPlaylist custom field
+                $this->setSongs($data['Songs']);
+            }
+            if (isset($data['User'])) { //gsPlaylist custom field
+                $this->setUser($data['User']);
+            }
+            return true;
         } else {
             return false;
         }

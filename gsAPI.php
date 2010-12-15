@@ -19,10 +19,11 @@ Note: even if you are only using the static functions, calling $gsapi = new gsap
 class gsAPI{
 	
 	private static $api_host = "api.grooveshark.com/ws/2.1/"; //generally don't change this
-	private static $listen_host = "http://listen.grooveshark.com/"; //change this to preview.grooveshark.com if you are with VIP //this could potentially automatically be done...
+	protected static $listen_host = "http://listen.grooveshark.com/"; //change this to preview.grooveshark.com if you are with VIP //this could potentially automatically be done...
 	private static $ws_key;
 	private static $ws_secret;
 	private $session;
+    protected $sessionUserid;
     
     private static $instance;
 	
@@ -150,6 +151,7 @@ class gsAPI{
 		$return = self::apiCall('authenticateUser',array('username'=>$user->getUsername(), 'token'=>$user->getToken(), 'sessionID'=>$this->session));
 		if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID'] > 0) {
             $user->importUserData($return['decoded']['result']);
+            $this->sessionUserid = $user->getUserID();
             return $user;
 		} else {
 			return false;
@@ -246,10 +248,11 @@ class gsAPI{
 		
 		$return = self::apiCall('getUserInfoFromSessionIDEx',array('sessionID'=>$this->session));
 
-		if (isset($return['decoded']['result']['UserID']))
+		if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID']) {
 			return $return['decoded']['result'];
-		else
+		} else {
 			return false;
+        }
 	}
     
     public function getExtendedUserInfoFromSessionID() {
@@ -389,7 +392,6 @@ class gsAPI{
 	*/
 	public static function getSongInfo($song){		
 		if (!is_numeric($song) || self::getDoesSongExist($song) === false){
-			trigger_error(__FUNCTION__." requires a songID. No valid songID was found.",E_USER_ERROR);
 			return false;
 		}
 		
@@ -398,6 +400,36 @@ class gsAPI{
 			return $return['decoded']['result'];
 		else
 			return false;
+	}
+    
+    /*
+	* Returns any meta data about songs
+
+	Requirements: none
+	Static Session
+	
+	@param	array	songIDs
+	*/
+	public static function getSongsInfo($songs, $returnByIds=false){        
+        if (!array($songs) || count($songs)<1){
+			return false;
+		}
+		
+		$return = self::apiCall('getSongsInfo',array('songIDs'=>self::formatSongIDs($songs)));
+		if (isset($return['decoded']['result']['songs'])) {
+            if ($returnByIds) {
+                $songs = array();
+    			foreach ($return['decoded']['result']['songs'] as $song) {
+                    if (isset($song['SongID'])) {
+                        $songs[$song['SongID']] = $song;
+                    }
+    			}
+                return $songs;
+            }
+            return $return['decoded']['result']['songs'];
+		} else {
+			return false;
+        }
 	}
 	
 	/*
@@ -453,17 +485,14 @@ class gsAPI{
 	*/
 	public function createPlaylist($name,$songs){
 		if (empty($this->session)){
-			trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
 			return false;
 		}
 		
 		if (empty($name)){
-			trigger_error(__FUNCTION__." requires a name. No valid playlist name was found.",E_USER_ERROR);
 			return false;
 		}
 		
 		if (!array($songs) || count($songs)<1){
-			trigger_error(__FUNCTION__." requires songIDs. No songIDs were sent. Be sure to send an array of songIDs.",E_USER_ERROR);
 			return false;
 		}
 
@@ -684,10 +713,11 @@ class gsAPI{
 		
 		$return = self::apiCall('getUserFavoriteSongs',array('sessionID'=>$this->session, 'limit'=>$limit));
 		//var_dump($return);
-		if (isset($return['decoded']['result']['songs']))
-			return $return['decoded']['result']['songs'];
-		else
+		if (isset($return['decoded']['result'])) {
+			return $return['decoded']['result'];
+		} else {
 			return false;
+        }
 	}
 		
 	/*

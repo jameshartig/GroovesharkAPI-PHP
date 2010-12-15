@@ -30,6 +30,25 @@ class gsUser extends gsAPI{
        }
 	}
     
+    function toArray() {
+        $array = array();
+        if ($this->getUsername(false)) $array['Username'] = $this->getUsername(false);
+        if ($this->getUserID(false)) $array['UserID'] = $this->getUserID(false);
+        if ($this->getName()) $array['Name'] = $this->getName();
+        if ($this->getEmail()) $array['Email'] = $this->getEmail();
+        if ($this->getSex()) $array['Sex'] = $this->getSex();
+        if ($this->getDOB()) $array['DOB'] = $this->getDOB();
+        if ($this->getPicture()) $array['Picture'] = $this->getPicture();
+        if ($this->getLevel(false) == 2) { $array['IsAnywhere'] = true; $array['IsPremium'] = true; }
+        if ($this->getLevel(false) == 1) { $array['IsPlus'] = true; $array['IsPremium'] = true; }
+        if ($this->getLevel(false) === 0) { $array['IsPlus'] = false; $array['IsAnywhere'] = false; $array['IsPremium'] = false; }
+        if ($this->getProfile(false)) $array['Profile'] = $this->getProfile(false);
+        if ($this->getFavorites(false) !== null) $array['Favorites'] = $this->getFavorites(false);
+        //if ($this->getLibrary()) $array['Library'] = $this->getLibrary();
+        if ($this->getPlaylists(false) !== null) $array['Playlists'] = $this->getPlaylists(false);
+        return $array;
+    }
+    
     public function setUsername($string) {        
         if (preg_match("/^([a-zA-Z0-9]+[\.\-_]?)+[a-zA-Z0-9]+$/",$string) === false){
 			return false;
@@ -104,9 +123,9 @@ class gsUser extends gsAPI{
 	}
     
     //1 = Plus, 2 = Anywhere
-    protected function setLevel($int) {
+    public function setLevel($int) {
         if (is_numeric($int) && $int < 2) { 
-            $this->premium = $int;
+            $this->premium = (int)$int;
             return true;
         }
         return false;
@@ -116,11 +135,31 @@ class gsUser extends gsAPI{
         if (is_numeric($this->premium) || !$fetch) {
             return $this->premium;
         }
-        if (is_object($this->parent) && $this->checkEmpty($this->parent->getSession())) {
+        if (is_object($this->parent) && $this->getUserID(false) == $this->parent->sessionUserid && $this->checkEmpty($this->parent->getSession())) {
             $this->importUserData($this->parent->getUserInfoFromSessionID());
             return $this->username;
         }
-    }   
+        return false;
+    }
+    
+    public function setFavorites($array) {
+        if (is_array($array)) { 
+            $this->favorites = $array;
+            return true;
+        }
+        return false;
+    }
+    
+    public function getFavorites($fetch=true) {
+        if (is_array($this->favorites) || !$fetch) {
+            return $this->favorites;
+        }
+        if (is_object($this->parent) && $this->getUserID(false) == $this->parent->sessionUserid && $this->checkEmpty($this->parent->getSession())) {
+            $this->favorites = $this->parent->getUserFavoriteSongs();
+            return $this->favorites;
+        }
+        return false;
+    }
     
     private function setPicture($file) {
         $this->picture = $file;
@@ -167,8 +206,8 @@ class gsUser extends gsAPI{
         return $this->email;
     }
     
-    public function getProfile() {
-        if (!$this->profile) {
+    public function getProfile($fetch=true) {
+        if (!$this->profile && $fetch) {
             $this->profile = $this->getUserProfileService();
             return $this->profile;
         } else {
@@ -177,33 +216,42 @@ class gsUser extends gsAPI{
     }
     
     //TODO: make the name optional (save an API call)
-	private static function getUserProfileService(){
+	private function getUserProfileService(){
         if (!$this->getUserID() && !$this->getUsername()) {
             return null;
         }
 		return sprintf(parent::$listen_host."#/user/%s/%u",($this->getUsername() ? $this->getUsername() : "~"),$this->getUserID());
 	}
     
+    public function setPlaylists($array) {
+        if (is_array($array)) {
+            $this->playlists = $array;
+            return true;
+        }
+        return false;
+    }
+    
     public function getPlaylists($fetch=true) {
-        if (is_array($this->playlists) || $fetch) {
+        if (is_array($this->playlists) || !$fetch) {
             return $this->playlists;
         }
         if ($this->checkEmpty($this->getUserID())) {
             $playlists = $this->parent->getUserPlaylists();
             $aPlaylists = array();
-            if ($playlists) {
+            if (is_array($playlists)) {
                 foreach($playlists as $playlist) {
                     $p = new gsPlaylist();
                     $p->importPlaylistData($playlist);
                     $aPlaylists[] = $p;
-                }                
+                }
+                $this->playlists = $aPlaylists;
             }
-            return $playlists;
+            return $this->playlists;
         }
         return null;
     }
     
-    protected function importUserData($data) {
+    public function importUserData($data) {
         if (is_array($data)) {
             if (isset($data['UserID'])) {
                 $this->setUserID($data['UserID']);
@@ -238,6 +286,10 @@ class gsUser extends gsAPI{
             if (isset($data['Sex'])) {
                 $this->setSex($data['Sex']);
             }
+            if (isset($data['Favorites'])) {
+                $this->setFavorites($data['Favorites']);
+            }
+            return true;
         } else {
             return false;
         }
