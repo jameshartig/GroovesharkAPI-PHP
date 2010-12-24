@@ -24,6 +24,7 @@ class gsAPI{
 	private static $ws_secret;
 	private $session;
     protected $sessionUserid;
+    public static $headers;
     
     private static $instance;
 	
@@ -45,6 +46,7 @@ class gsAPI{
         if (!isset(self::$instance)) {
             self::$instance = $this;
         }
+        self::$headers = array();        
 	}
     
     static function getInstance() {
@@ -98,8 +100,9 @@ class gsAPI{
 	Requirements: none
 	Even though this function requires nothing, it is not static
 	*/	
-	public function setSession($session){
+	public function setSession($session, $userid=false){
 		$this->session = $session;
+        $this->sessionUserid = $userid;
 		return $session;
 	}
 	
@@ -495,7 +498,6 @@ class gsAPI{
 		if (!array($songs) || count($songs)<1){
 			return false;
 		}
-
 		$return = self::apiCall('createPlaylist',array('sessionID'=>$this->session, 'name'=>$name, 'songIDs'=>self::formatSongIDs($songs)));
 		//var_dump($return);
 		if (isset($return['decoded']['result']))
@@ -908,6 +910,9 @@ class gsAPI{
 	    curl_setopt($c, CURLOPT_URL, $url);
 	    curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
 	    curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 4);
+        if (self::$headers) {
+            curl_setopt($c, CURLOPT_HTTPHEADER, self::$headers);
+        }
         curl_setopt($c, CURLOPT_TIMEOUT, 10);
 	    curl_setopt($c, CURLOPT_USERAGENT, 'fastest963-GSAPI-PHP');
 	    $result = curl_exec($c);
@@ -946,9 +951,9 @@ class gsAPI{
 	private static function formatSongIDs($songs){
 		$final = array();
 		foreach($songs AS $sng){
-			if (isset($sng['SongID']))
+			if (is_array($sng) && isset($sng['SongID'])) {
 				$final[] = $sng['SongID'];
-			elseif (is_array($sng)){
+			} elseif (is_array($sng)){
 				foreach($sng AS $k => $v){ //check for if case is not SongID
 					if (strtolower($k) == 'songid'){
 						$final[] = $v;

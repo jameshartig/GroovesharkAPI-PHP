@@ -235,8 +235,29 @@ class gsUser extends gsAPI{
         if (is_array($this->playlists) || !$fetch) {
             return $this->playlists;
         }
-        if ($this->checkEmpty($this->getUserID())) {
+        if (is_object($this->parent) && $this->getUserID(false) == $this->parent->sessionUserid && $this->checkEmpty($this->parent->getSession())) {
             $playlists = $this->parent->getUserPlaylists();
+            $aPlaylists = array();
+            if (is_array($playlists)) {
+                foreach($playlists as $playlist) {
+                    $p = new gsPlaylist();
+                    $p->importPlaylistData($playlist);
+                    $aPlaylists[] = $p;
+                }
+                $this->playlists = $aPlaylists;
+            }
+            return $this->playlists;
+        }
+        return null;
+    }
+    
+    //this method is access protected on Grooveshark's end
+    public function getPlaylistsFromID($fetch=true) {
+        if (is_array($this->playlists) || !$fetch) {
+            return $this->playlists;
+        }
+        if ($this->checkEmpty($this->getUserID())) {
+            $playlists = $this->parent->getUserPlaylistsByUserID($this->userid);
             $aPlaylists = array();
             if (is_array($playlists)) {
                 foreach($playlists as $playlist) {
