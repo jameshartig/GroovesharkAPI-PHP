@@ -124,7 +124,7 @@ class gsUser extends gsAPI{
     
     //1 = Plus, 2 = Anywhere
     public function setLevel($int) {
-        if (is_numeric($int) && $int < 2) { 
+        if (is_numeric($int) && $int <= 2) { 
             $this->premium = (int)$int;
             return true;
         }
@@ -283,12 +283,12 @@ class gsUser extends gsAPI{
             //if (isset($data['IsPremium'])) {
             //    $this->setPremium($data['IsPremium']);
             //}
-            if (isset($data['IsAnywhere']) && $data['IsAnywhere']) {
-                $this->setLevel(2);
-            }
             if (isset($data['IsPlus']) && $data['IsPlus']) {
                 $this->setLevel(1);
             }
+            if (isset($data['IsAnywhere']) && $data['IsAnywhere']) {
+                $this->setLevel(2);
+            }            
             if (isset($data['Level'])) { //custom gsUser field
                 $this->setLevel($data['Level']);
             }
