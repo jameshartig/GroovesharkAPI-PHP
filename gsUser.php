@@ -39,9 +39,9 @@ class gsUser extends gsAPI{
         if ($this->getSex()) $array['Sex'] = $this->getSex();
         if ($this->getDOB()) $array['DOB'] = $this->getDOB();
         if ($this->getPicture()) $array['Picture'] = $this->getPicture();
-        if ($this->getLevel(false) == 2) { $array['IsAnywhere'] = true; $array['IsPremium'] = true; }
-        if ($this->getLevel(false) == 1) { $array['IsPlus'] = true; $array['IsPremium'] = true; }
-        if ($this->getLevel(false) === 0) { $array['IsPlus'] = false; $array['IsAnywhere'] = false; $array['IsPremium'] = false; }
+        if ($this->getLevel(false) == 2) { $array['IsAnywhere'] = true; $array['IsPlus'] = true; }
+        if ($this->getLevel(false) == 1) { $array['IsPlus'] = true; }
+        if ($this->getLevel(false) === 0) { $array['IsPlus'] = false; $array['IsAnywhere'] = false; }
         if ($this->getProfile(false)) $array['Profile'] = $this->getProfile(false);
         if ($this->getFavorites(false) !== null) $array['Favorites'] = $this->getFavorites(false);
         //if ($this->getLibrary()) $array['Library'] = $this->getLibrary();
@@ -78,7 +78,7 @@ class gsUser extends gsAPI{
     //this method is access controlled
     public function getUserInfoFromUserID() {
         if ($this->getUserID()) {
-    		$return = parent::apiCall('getUserInfoFromUserID', array('UserID'=>$this->getUserID()));
+    		$return = parent::apiCall('getUserInfoFromUserID', array('userID'=>$this->getUserID()));
     		if (isset($return['decoded']['result'][0]['UserID'])) {
                 $this->importUserData($return['decoded']['result'][0]);
             	return $return['decoded']['result'][0];
@@ -137,7 +137,7 @@ class gsUser extends gsAPI{
         }
         if (is_object($this->parent) && $this->getUserID(false) == $this->parent->sessionUserid && $this->checkEmpty($this->parent->getSession())) {
             $this->importUserData($this->parent->getUserInfoFromSessionID());
-            return $this->username;
+            return $this->premium;
         }
         return false;
     }
@@ -210,17 +210,19 @@ class gsUser extends gsAPI{
         if (!$this->profile && $fetch) {
             $this->profile = $this->getUserProfileService();
             return $this->profile;
-        } else {
+        } else {            
+            if ($this->getUserID(false)) { //if we already have the userID then no api call needed ;)
+                $this->profile = $this->getUserProfileService();
+            }            
             return $this->profile;
         }
     }
     
-    //TODO: make the name optional (save an API call)
 	private function getUserProfileService(){
-        if (!$this->getUserID() && !$this->getUsername()) {
+        if (!$this->getUserID()) {
             return null;
         }
-		return sprintf(parent::$listen_host."#/user/%s/%u",($this->getUsername() ? $this->getUsername() : "~"),$this->getUserID());
+		return sprintf(parent::$listen_host."#/user/%s/%u",($this->getUsername(false) ? $this->getUsername(false) : "-"),$this->getUserID());
 	}
     
     public function setPlaylists($array) {
@@ -288,7 +290,10 @@ class gsUser extends gsAPI{
             }
             if (isset($data['IsAnywhere']) && $data['IsAnywhere']) {
                 $this->setLevel(2);
-            }            
+            }
+            if ((!isset($data['IsAnywhere']) || !$data['IsAnywhere']) && (!isset($data['IsPlus']) || !$data['IsPlus'])) {
+                $this->setLevel(0);
+            }
             if (isset($data['Level'])) { //custom gsUser field
                 $this->setLevel($data['Level']);
             }
