@@ -767,16 +767,18 @@ class gsAPI{
 	
 	Returns an array with songs subarray
 	*/
-	protected static function getSongSearchResults($query, $limit=null, $page=null){
+	protected static function getSongSearchResults($query, $limit=null, $page=null, $returnURLOnly=false){
 		if (empty($query)){
 			trigger_error(__FUNCTION__." requires a query. No query was found.",E_USER_ERROR);
 			return false;
 		}
 		
-		$return = self::apiCall('getSongSearchResultsEx',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
-		if (isset($return['decoded']['result']['songs']))
+		$return = self::apiCall('getSongSearchResultsEx',array('query'=>$query, 'limit'=>$limit, 'page'=>$page), false, $returnURLOnly);
+		if (is_array($return) && isset($return['decoded']['result']['songs']))
 			return $return['decoded']['result'];
-		else
+		else if ($returnURLOnly)
+            return $return;
+        else
 			return false;
 		
 	} 
@@ -883,7 +885,7 @@ class gsAPI{
 	/* 
 	* Private call to grooveshark API, this is where the magic happens!
 	*/ 
-	protected static function apiCall($method,$args=array(),$https=false){	
+	protected static function apiCall($method, $args=array(), $https=false, $returnURLOnly = false){	
 			
 		$args['sig'] = self::createMessageSig($method, $args, self::$ws_secret);
 		$args['wsKey'] = self::$ws_key;
@@ -905,7 +907,11 @@ class gsAPI{
         $query_str = "?".substr($query_str,1); //remove beginning & and replace with a ?	
 		
 	    $url = sprintf('%s://%s',($https === true ? "https" : "http"),self::$api_host.$query_str);
-
+        
+        if ($returnURLOnly) {
+            return $url;
+        }
+        
 	    $c = curl_init();
 	    curl_setopt($c, CURLOPT_URL, $url);
 	    curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
