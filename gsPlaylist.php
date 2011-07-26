@@ -2,7 +2,7 @@
 
 /**
  * @author deVolf
- * @copyright 2010
+ * @copyright 2011
  */
 
 class gsPlaylist extends gsAPI{
@@ -114,22 +114,12 @@ class gsPlaylist extends gsAPI{
         return $url;
     }
     
-    //TODO: make the name optional (save an API call)
-    public function getURL($fetch=true) {
-        if (($fetch || (!$fetch && $this->getPlaylistID(false) && $this->getPlaylistID(false)))  && $this->getPlaylistID()) {
-            //getPlaylistUrlFromPlaylistID?
-            return sprintf(parent::$listen_host."playlist/%s/%u",($this->getName() ? str_replace(array("-", "!", "  "," "), array("", "", "_", "_"), $this->getName()) : "-"),$this->getPlaylistID());
-        } else {
-            return null;
-        }
+    public function getURL() {
+        return self:getPlaylistURLService($this->playlistid);
     }
-    	
-	/*
-    Not needed.
-	*/
+    
 	public static function getPlaylistURLService($playlistID){
 		if (!is_numeric($playlistID)){
-			trigger_error(__FUNCTION__." requires a valid playlistID. The playlistID provided was invalid.",E_USER_ERROR);
 			return false;
 		}		
 		
@@ -152,10 +142,7 @@ class gsPlaylist extends gsAPI{
             return $this->songs;
         }
         
-        if ($this->checkEmpty($this->getPlaylistID())) {
-            return $this->getPlaylistSongs();
-        }
-        return false;
+         return $this->getPlaylistSongs();
     }
     
     private function getPlaylistSongs($limit=null){
@@ -196,22 +183,6 @@ class gsPlaylist extends gsAPI{
         } else {
             return false;
         }
-    }
-    
-    private function checkEmpty($var) {
-        if ($var === false){
-            return false;
-        }
-        if ($var === null) {
-            return false;
-        }
-        if ($var === "") {
-            return false;
-        }
-        if ($var === 0) {
-            return false;
-        }
-        return true;
     }
     
 }

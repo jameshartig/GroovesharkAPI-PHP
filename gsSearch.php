@@ -2,7 +2,7 @@
 
 /**
  * @author James Hartig
- * @copyright 2010
+ * @copyright 2011
  */
 
 class gsSearch extends gsAPI{
@@ -17,7 +17,6 @@ class gsSearch extends gsAPI{
     private $changed = true;
 	private $exact;
 	private $results = null;
-	private $gsUserPass = null;
 	
     function gsSearch(&$parent=null){
 	   if (!$parent) {
@@ -26,10 +25,6 @@ class gsSearch extends gsAPI{
             $this->parent = $parent;
        }
 	}
-    
-    public function setAPISharkPass($password=null) {
-        $this->gsUserPass = $password;
-    }
 	
 	public function setArtist($artist){
         $this->changed = true;
@@ -88,7 +83,7 @@ class gsSearch extends gsAPI{
         return $this->id;
     }
 	
-    public function singleSongSearch() {
+    /*public function singleSongSearch() {
         //todo: this
         if (count($songs['songs'])==1 && $page==1){
             return $songs['songs'][0];
@@ -140,7 +135,7 @@ class gsSearch extends gsAPI{
                 }
 			}
         }
-    }
+    }*/
     
 	private static function performSongSearch($query, $max=null){        
         $results = array();
@@ -166,228 +161,62 @@ class gsSearch extends gsAPI{
             return $results;
         }
 	}
-    
-    //strict limit of 95 when doing this.
-    private static function getURLForSongSearchMulti($query, $max=null){
-        if ($max > 95) {
-            $max = 95;
-        }
-        $url = parent::getSongSearchResults($query, $max, null, true);
-        return $url;
-    }
-    
-    
-    //send an array of gsSearch's
-    //returns array of results
-    //searches are also updated
-    public static function performSongSearchMulti(&$searches, $max=null){        
-        $URLs = array(array());
-        $u = 0;
-        $results = array();
-        foreach ($searches as $i => $search) {
-            //we always get at least 50
-            if ($search->changed || (count($search->results) >= 50 && $max > count($search->results))) {
-                if (count($URLs[$u]) >= self::MAX_PARALLEL_SEARCHES) {
-                    $u++;
-                    $URLs[$u] = array();
-                }
-                $URLs[$u][$i] = $search->songSearchResults($max, true);
-                
-                $results[$i] = null;
-            } else {
-                $results[$i] = $search->songSearchResults($max);
-            }
-        }
-        if ($URLs && $URLs[0]) {            
-            foreach ($URLs AS $URLsSet) {
-                $resultsP = self::parallelCalls($URLsSet);
-                if ($resultsP) {
-                    foreach ($resultsP as $i => $result) {
-                        try {
-                            $resultD = json_decode($result, true);
-                            if ($resultD && is_array($resultD) && isset($resultD['result']) && isset($resultD['result']['songs'])) {
-                                if ($max) {
-                                    if (isset($searches[$i])) $searches[$i]->setResults($resultD['result']['songs']);
-                                    $results[$i] = array_slice($resultD['result']['songs'], 0, $max, true);
-                                } else {
-                                    if (isset($searches[$i])) $searches[$i]->setResults($resultD['result']['songs']);
-                                    $results[$i] = $resultD['result']['songs'];
-                                }                        
-                            } else {
-                                $results[$i] = null;
-                            }
-                        } catch (Exception $e) {
-                            $results[$i] = $result; 
-                        }                
-                    }
-                }
-            }
-        }
-  		return $results;
-	}
     	
-	public function songSearchResults($max = null, $returnURLForMulti = false){	   
+	public function songSearchResults($max = null){	   
         //build request
-		$query_str = "";
-		if (!empty($this->title)){
-			$query_str .= " song:".$this->title;
-		}
-		if (!empty($this->artist)){
-        	$query_str .= " artist:".$this->artist;
- 		}
-		 if (!empty($this->album)){
-        	$query_str .= " album:".$this->album;
-  		}
-        $query_str = trim($query_str);
-        
-  		if (empty($query_str)) {
-  			return array();
+		if (empty($query_str)) {
+            return array();
         }
         
         //we always get at least 50
         if ($this->changed || (count($this->results) >= 50 && $max > count($this->results))) {
             $this->results = null;
             $this->changed = false;
-            if ($returnURLForMulti) {
-	           return self::getURLForSongSearchMulti($query_str, max($max, 50));
-            } else {
-                $this->results = self::performSongSearch($query_str, max($max, 50));
-                return array_slice($this->results, 0, $max, true);
-            }
+            
+            $this->results = self::performSongSearch($query_str, max($max, 50));
+            return array_slice($this->results, 0, $max, true);
         } else {
-            if ($returnURLForMulti) {
-	           return self::getURLForSongSearchMulti($query_str, max($max, 50));
+            if ($max) {
+                return array_slice($this->results, 0, $max, true);
             } else {
-                if ($max) {
-                    return array_slice($this->results, 0, $max, true);
-                } else {
-                    return $this->results;
-                }
+                return $this->results;
             }
         }        
 	}
 	
-	public function getGSUserSongResult(){
-		//build request
-		
-		if (empty($this->gsUserPass) || !preg_match('/^[A-Za-z0-9]{8}$/',$this->gsUserPass)){
-        	trigger_error(__FUNCTION__." requires a GSUser password. ".$this->gsUserPass." You provided an invalid password.",E_USER_ERROR);
-			return false;
-		}
-		
-		$url = "http://gsuser.com/searchSongEx/".urlencode($this->title)."/".urlencode($this->artist)."/".urlencode($this->album)."/?password=".$this->gsUserPass;
-		$result = gsapi::httpCall($url,'gsSearch-'.$this->gsUserPass);
-		if ($result['http'] == 403){
-			trigger_error(__FUNCTION__." invalid password sent.",E_USER_ERROR);
-			return false;
-		}elseif($result['http'] == 404){
-			return false;
-		}elseif($result['http'] == 200){
-			return json_decode($result['raw'],true);
-		}else{
-			return $result['raw'];
-		}
+	public function artistSearchResults()
+    {
+        
 	}
 	
-	public function getSingleArtistResult(){
-		//build request
-		if (empty($this->artist))
-			return false;
-		$this->results=null;		  		
-  		$this->listing = array(array(),array());
-  				
-		$artist_parse = explode(" ",$this->artist);
-  		
-  		for($page=1;$page<=5;$page++){
-			$results = gsapi::getArtistSearchResults($this->artist,200,$page);
-			if ($results === false || !isset($results['artists']) || count($results['artists'])<1)
-				break;	
-			
-			$this->appendResults($results['artists']);
-			
-			foreach ($results['artists'] AS $arst){
-				if (!isset($this->listing[0][$arst['ArtistID']])){
-					$score = 0;
-					if (!empty($this->artist)){
-						if (!isset($artist_ranks[strtolower($arst['ArtistName'])]))
-							$artist_ranks[strtolower($arst['ArtistName'])] = self::calculateScore(array($this->artist,$artist_parse),$arst['ArtistName'],1,true);
-						$score += $artist_ranks[strtolower($arst['ArtistName'])];					
-					}
-					if ($arst['IsVerified'])
-						$score *= 1.50; //50% boost for anything verified
-
-					if ($score > .001){	
-						$this->listing[0][$arst['ArtistID']] = $score;
-						$this->listing[1][$arst['ArtistID']] = $arst;
-					}
-				}
-			}
-			if ($results['pager']['hasNextPage'] == false || (count($this->listing[0]) && max($this->listing[0])>.70)) //if its greater than 70% we pretty much have a match
-				break;
+	public function albumSearchResults()
+    {
+        
+    }
+    
+    private function buildQuery() {
+        $query_str = "";
+    	if (!empty($this->title) && (!empty($this->artist) || !empty($this->album))){
+			$query_str .= " song:".$this->title;
+            if (!empty($this->artist)){
+                $query_str .= " artist:".$this->artist;
+            }
+    		if (!empty($this->album)){
+                $query_str .= " album:".$this->album;
+      	  }
+		} else if (!empty($this->artist)) {
+            if (!empty($this->album)){
+                $query_str .= " artist:".$this->artist;
+                $query_str .= " album:".$this->album;
+            } else {
+                $query_str .= $this->artist;
+            }
+		} else {
+            $query_str .= ($this->title ? $this->title : ($this->album ? $this->album : ""));
 		}
-		if (count($this->listing[0])<1)
-			return false;
-		else{			
-			arsort($this->listing[0]);
-			if (reset($this->listing[0])<.005)
-				return false; //this result is basically worthless
-			return $this->listing[1][key($this->listing[0])];
-		}
-	}
-	
-	public function getSingleAlbumResult($version=1){
-		//build request
-		if (empty($this->album))
-			return false;
-		$this->results=null;		  		
-  		$this->listing = array(array(),array());
-  				
-		$album_parse = explode(" ",trim(substr($this->album,0,(($pos = strpos($this->album,"("))==0 ? $pos : strlen($this->album))))); //we want to keep everying up to ( becasue we don't care about "Deluxe Edition" or "Single" or anything similar
-  		
-  		for($page=1;$page<=5;$page++){
-  			if ($version==2)
-  				$results = gsapi::getAlbumSearchResults2($this->album,200,$page);
-  			else
-				$results = gsapi::getAlbumSearchResults($this->album,200,$page);
-			if ($results === false || !isset($results['albums']) || count($results['albums'])<1)
-				break;	
-			
-			$this->appendResults($results['albums']);
-			
-			foreach ($results['albums'] AS $albm){
-				if (!isset($this->listing[0][$albm['AlbumID']])){
-					$score = 0;
-					
-					if (!isset($album_ranks[strtolower($albm['AlbumName'])]))
-						$album_ranks[strtolower($albm['AlbumName'])] = self::calculateScore(array($this->album,$album_parse),$albm['AlbumName'],1,true);
-					$score += $album_ranks[strtolower($albm['AlbumName'])]*(count($album_parse)>1?.6:1);
-					
-					if (count($album_parse)>1){		
-						if (!isset($album_ranks[strtolower($albm['ArtistName'].$albm['AlbumName'])]))
-							$album_ranks[strtolower($albm['ArtistName'].$albm['AlbumName'])] = self::calculateScore(array($this->album,$album_parse),$albm['ArtistName'].$albm['AlbumName'],1,true);
-						$score += $album_ranks[strtolower($albm['ArtistName'].$albm['AlbumName'])]*.4;
-					}
-									
-					if ($albm['IsVerified'])
-						$score *= 1.50; //50% boost for anything verified
-					if ($score > .001){	
-						$this->listing[0][$albm['AlbumID']] = $score;
-						$this->listing[1][$albm['AlbumID']] = $albm;
-					}
-				}
-			}
-			if ($results['pager']['hasNextPage'] == false || (count($this->listing[0]) && max($this->listing[0])>.70)) //if its greater than 70% we pretty much have a match
-				break;
-		}
-		if (count($this->listing[0])<1)
-			return false;
-		else{			
-			arsort($this->listing[0]);
-			if (reset($this->listing[0])<.005)
-				return false; //this result is basically worthless
-			return $this->listing[1][key($this->listing[0])];
-		}
-	}
+        $query_str = trim($query_str);
+        return $query_str;
+    }
 	
 	private static function appendResults($results, &$toResults){
 	    if (!is_array($toResults)) {
@@ -400,7 +229,7 @@ class gsSearch extends gsAPI{
             }
 		}		
 	}
-	
+	/*
 	//todo build support for >255 chars
 	private static function calculateScore($search,$result,$rank=1,$lesssub=false){
 		$len = strlen($search[0]);
@@ -485,7 +314,7 @@ class gsSearch extends gsAPI{
         
         return $res;
     }
-	
+	*/
 }
 
 ?>
