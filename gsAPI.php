@@ -22,9 +22,9 @@ class gsAPI{
 	protected static $listen_host = "http://grooveshark.com/"; //change this to preview.grooveshark.com if you are with VIP //this could potentially automatically be done...
 	private static $ws_key;
 	private static $ws_secret;
-	private $session;
+	protected $session;
     protected $sessionUserid;
-    private $country;
+    protected $country;
     public static $headers;
     
     private static $instance;
@@ -685,16 +685,14 @@ class gsAPI{
        if (!$this->session) {
             trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
         }
-        
-        if ($ip) {
-            $return = self::apiCall('getCountry', array('sessionID'=>$this->session, 'ip'=>$ip));
-        } else {
-            $return = self::apiCall('getCountry', array('sessionID'=>$this->session));
+        if (!$ip) {
+            $ip = $_SERVER['REMOTE_ADDR'];
         }
+        $return = self::apiCall('getCountry', array('sessionID'=>$this->session, 'ip'=>$ip));
 		/* this method has not yet been tested for the result set */
 		if (isset($return['decoded']['result'])){
             $this->country = $return['decoded']['result'];
-			return $this->country;
+            return $this->country;
 		} else {
 			return false;
 		}
@@ -709,17 +707,17 @@ class gsAPI{
 	
 	Returns an array with songs subarray
 	*/
-	protected static function getSongSearchResults($query, $limit=null, $page=null){
+	protected static function getSongSearchResults($query, $country, $limit=null, $page=null){
 		if (empty($query)){
 			return false;
 		}
         
-        if (!$this->country) {
+        if (!$country) {
             trigger_error(__FUNCTION__." requires a valid country. No country was found.", E_USER_ERROR);
         }
 		
-		$return = self::apiCall('getSongSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page, 'country'=>$this->country));
-		if (isset($return['decoded']['result']['songs'])) {
+		$return = self::apiCall('getSongSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page, 'country'=>$country));
+        if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result'];
         } else {
 			return false;

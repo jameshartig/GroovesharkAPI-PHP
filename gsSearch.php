@@ -137,10 +137,10 @@ class gsSearch extends gsAPI{
         }
     }*/
     
-	private static function performSongSearch($query, $max=null){        
+	private static function performSongSearch($query, $country, $max=null){        
         $results = array();
   		for($page=1;$page<=2;$page++){
-			$songs = parent::getSongSearchResults($query, ($max ? $max : 91), ($page-1)*90);
+			$songs = parent::getSongSearchResults($query, $country, ($max ? $max : 91), ($page-1)*90);
 			if ($songs === false || !isset($songs['songs']) || count($songs['songs'])<1) {
 				break;
             }                
@@ -164,6 +164,9 @@ class gsSearch extends gsAPI{
     	
 	public function songSearchResults($max = null){	   
         //build request
+        
+        $query_str = $this->buildQuery();
+        
 		if (empty($query_str)) {
             return array();
         }
@@ -173,7 +176,7 @@ class gsSearch extends gsAPI{
             $this->results = null;
             $this->changed = false;
             
-            $this->results = self::performSongSearch($query_str, max($max, 50));
+            $this->results = self::performSongSearch($query_str, $this->parent->country, max($max, 50));
             return array_slice($this->results, 0, $max, true);
         } else {
             if ($max) {
