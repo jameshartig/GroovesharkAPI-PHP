@@ -681,11 +681,15 @@ class gsAPI{
 	Requirements: session, extended access
 	*/
 	public static function getCountry($ip = false){
+	   
+       if (!$this->session) {
+            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
+        }
         
         if ($ip) {
-            $return = self::apiCall('getCountry',array('ip'=>$ip));
+            $return = self::apiCall('getCountry', array('sessionID'=>$this->session, 'ip'=>$ip));
         } else {
-            $return = self::apiCall('getCountry',array());
+            $return = self::apiCall('getCountry', array('sessionID'=>$this->session));
         }
 		/* this method has not yet been tested for the result set */
 		if (isset($return['decoded']['result'])){
@@ -709,8 +713,12 @@ class gsAPI{
 		if (empty($query)){
 			return false;
 		}
+        
+        if (!$this->country) {
+            trigger_error(__FUNCTION__." requires a valid country. No country was found.", E_USER_ERROR);
+        }
 		
-		$return = self::apiCall('getSongSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
+		$return = self::apiCall('getSongSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page, 'country'=>$this->country));
 		if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result'];
         } else {
@@ -831,7 +839,8 @@ class gsAPI{
             unset($payload['parameters']['sessionID']);
         }
         
-		$sig = self::createMessageSig($payload, self::$ws_secret);
+        $postData = json_encode($payload);
+		$sig = self::createMessageSig($postData, self::$ws_secret);
         $query_str = "?sig=" . $sig;
 		
 	    $url = sprintf('%s://%s',($https === true ? "https" : "http"),self::$api_host.$query_str);
