@@ -1,0 +1,18 @@
+To do search:
+
+require("gsAPI.php");
+
+$gsapi = new gsapi('key', 'secret');
+
+$gsapi->startSession();
+//please cache this session and use setSession('session')
+
+$gsapi->getCountry($_SERVER['REMOTE_ADDR']);
+//just need to call this, it will store itself in gsapi
+
+require("gsSearch.php");
+
+$gsSearch = new gsSearch();
+$gsSearch->setTitle('song title');
+
+$results = $gsSearch->songSearchResults();
