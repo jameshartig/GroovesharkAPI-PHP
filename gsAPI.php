@@ -18,7 +18,7 @@ Note: even if you are only using the static functions, calling $gsapi = new gsap
 
 class gsAPI{
 	
-	private static $api_host = "http://api.grooveshark.com/ws3.php"; //generally don't change this
+	private static $api_host = "api.grooveshark.com/ws3.php"; //generally don't change this
 	protected static $listen_host = "http://grooveshark.com/"; //change this to preview.grooveshark.com if you are with VIP //this could potentially automatically be done...
 	private static $ws_key;
 	private static $ws_secret;
@@ -75,7 +75,7 @@ class gsAPI{
 	Even though this function requires nothing, it is not static
 	*/	
 	public function startSession(){
-		$return = self::apiCall('startSession',array());
+		$return = self::apiCall('startSession', array(), true);
 
 		if (isset($return['decoded']['result']['success']) && $return['decoded']['result']['success'] === true){
 			$this->session = $return['decoded']['result']['sessionID'];
@@ -141,7 +141,7 @@ class gsAPI{
             return false;
         }
 
-		$return = self::apiCall('authenticate',array('username'=>$user->getUsername(), 'password'=>$user->getToken(), 'sessionID'=>$this->session));
+		$return = self::apiCall('authenticate',array('username'=>$user->getUsername(), 'password'=>$user->getToken(), 'sessionID'=>$this->session), true);
 		if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID'] > 0) {
             $user->importUserData($return['decoded']['result']);
             $this->sessionUserid = $user->getUserID();
@@ -680,7 +680,7 @@ class gsAPI{
 	
 	Requirements: session, extended access
 	*/
-	public static function getCountry($ip = false){
+	public function getCountry($ip = false){
 	   
        if (!$this->session) {
             trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
@@ -844,7 +844,7 @@ class gsAPI{
         $query_str = "?sig=" . $sig;
 		
 	    $url = sprintf('%s://%s',($https === true ? "https" : "http"),self::$api_host.$query_str);
-        
+                
         $c = curl_init();
 	    curl_setopt($c, CURLOPT_URL, $url);
 	    curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
