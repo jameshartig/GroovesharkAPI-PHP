@@ -44,13 +44,19 @@ class gsUser extends gsAPI{
         if ($this->getLevel(false) === 0) { $array['IsPlus'] = false; $array['IsAnywhere'] = false; }
         if ($this->getProfile(false)) $array['Profile'] = $this->getProfile(false);
         if ($this->getFavorites(false) !== null) $array['Favorites'] = $this->getFavorites(false);
-        //if ($this->getLibrary()) $array['Library'] = $this->getLibrary();
+        if ($this->getLibrary()) $array['Library'] = $this->getLibrary(false);
         if ($this->getPlaylists(false) !== null) $array['Playlists'] = $this->getPlaylists(false);
         return $array;
     }
     
     public function setUsername($string) {        
         if (preg_match("/^([a-zA-Z0-9]+[\.\-_]?)+[a-zA-Z0-9]+$/",$string) === false){
+		
+			if (strpos($string, "@") !== false) {
+				$this->setEmail($string);
+				return $string;
+			}
+		
 			return false;
 		} else {
             $this->username = $string;
@@ -276,6 +282,26 @@ class gsUser extends gsAPI{
         return null;
     }
     
+    public function setLibrary($array) {
+        if (is_array($array)) {
+            $this->library = $array;
+            return true;
+        }
+        return false;
+    }
+    
+    public function getLibrary($fetch=true) {
+        if (is_array($this->library) || !$fetch) {
+            return $this->library;
+        }
+        if (is_object($this->parent) && $this->getUserID(false) == $this->parent->sessionUserid && $this->parent->getSession()) {
+            $library = $this->parent->getUserLibrarySongs();
+            $this->library = $library;
+            return $this->library;
+        }
+        return null;
+    }
+    
     public function importUserData($data) {
         if (is_array($data)) {
             if (isset($data['UserID'])) {
@@ -320,6 +346,12 @@ class gsUser extends gsAPI{
             }
             if (isset($data['Favorites'])) {
                 $this->setFavorites($data['Favorites']);
+            }            
+            if (isset($data['Playlists'])) {
+                $this->setPlaylists($data['Playlists']);
+            }
+            if (isset($data['Library'])) {
+                $this->setLibrary($data['Library']);
             }
             return true;
         } else {
@@ -347,6 +379,10 @@ class gsUser extends gsAPI{
         } else {
             return true;
         }
+    }
+    
+    public function getSession() {
+        return $this->parent->session;
     }
        
 }

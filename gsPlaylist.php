@@ -115,7 +115,7 @@ class gsPlaylist extends gsAPI{
     }
     
     public function getURL() {
-        return self:getPlaylistURLService($this->playlistid);
+        return self::getPlaylistURLService($this->playlistid);
     }
     
 	public static function getPlaylistURLService($playlistID){
@@ -141,24 +141,10 @@ class gsPlaylist extends gsAPI{
         if ($this->songs || !$fetch) {
             return $this->songs;
         }
-        
-         return $this->getPlaylistSongs();
+        $this->songs = parent::getPlaylistSongs($this->getPlaylistID());
+        return $this->songs;
     }
-    
-    private function getPlaylistSongs($limit=null){
-		if (!is_numeric($this->getPlaylistID())){
-			return false;
-		}
-		
-		$return = parent::apiCall('getPlaylistSongs', array('playlistID'=>$this->getPlaylistID(), 'limit'=>$limit));
-		if (isset($return['decoded']['result'])) {
-            $this->setSongs($return['decoded']['result']);
-			return $this->songs;
-		} else {
-			return false;
-        }
-	}
-    
+        
     public function importPlaylistData($data) {
         if (is_array($data)) {
             if (isset($data['PlaylistID'])) {

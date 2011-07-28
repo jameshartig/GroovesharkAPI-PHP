@@ -137,11 +137,12 @@ class gsAPI{
 			}
 		}
         
-        if (!$user->getUsername() || !$user->getToken()) {
+        if ((!$user->getUsername() && !$user->getEmail()) || !$user->getToken()) {
             return false;
         }
 
-		$return = self::apiCall('authenticate',array('username'=>$user->getUsername(), 'password'=>$user->getToken(), 'sessionID'=>$this->session), true);
+		$return = self::apiCall('authenticate',array('login'=>($user->getUsername() ? $user->getUsername() :  $user->getEmail()), 
+									'password'=>$user->getToken(), 'sessionID'=>$this->session), true);
 		if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID'] > 0) {
             $user->importUserData($return['decoded']['result']);
             $this->sessionUserid = $user->getUserID();
@@ -248,8 +249,8 @@ class gsAPI{
 		}
 		
 		$return = self::apiCall('getUserPlaylists',array('sessionID'=>$this->session, 'limit'=>$limit));
-		if (isset($return['decoded']['result'])) {
-			return $return['decoded']['result'];
+		if (isset($return['decoded']['result']['playlists'])) {
+			return $return['decoded']['result']['playlists'];
 		} else {
 			return false;
 		}
@@ -275,6 +276,48 @@ class gsAPI{
 		} else {
 			return false;
 		}
+	}
+    
+    /* 
+	* getUserLibrary
+	
+	Requirements: session
+
+	@param	integer	limit, optional
+	*/
+	public function getUserLibrarySongs($limit=null){		
+		if (empty($this->session)){
+    		trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
+			return false;
+		}
+		
+		$return = self::apiCall('getUserLibrarySongs',array('sessionID'=>$this->session, 'limit'=>$limit));
+		if (isset($return['decoded']['result']['songs'])) {
+			return $return['decoded']['result']['songs'];
+		} else {
+			return false;
+		}
+	}
+    
+    /*
+	* Returns a list of favorites from the user.
+	
+	TODO: Sort by newest at the top.
+	
+	Requirements: session
+	*/	
+	public function getUserFavoriteSongs($limit=null){
+		if (empty($this->session)){
+			trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
+			return false;
+		}
+		
+		$return = self::apiCall('getUserFavoriteSongs',array('sessionID'=>$this->session, 'limit'=>$limit));
+		if (isset($return['decoded']['result']['songs'])) {
+			return $return['decoded']['result']['songs'];
+		} else {
+			return false;
+        }
 	}
 	
 	/*
@@ -415,6 +458,27 @@ class gsAPI{
 		} else {
 			return false;
 		}
+	}
+    
+    /*
+	* Returns songs in a playlist
+
+	Requirements: none
+	Static Session
+	
+	@param	integer	playlistID
+	*/
+    public static function getPlaylistSongs($playlistID, $limit=null){
+		if (!is_numeric($playlistID)){
+			return false;
+		}
+		
+		$return = self::apiCall('getPlaylistSongs', array('playlistID'=>$playlistID, 'limit'=>$limit));
+		if (isset($return['decoded']['result']['songs'])) {
+			return $return['decoded']['result']['songs'];
+		} else {
+			return false;
+        }
 	}
 	
 	/*
@@ -654,27 +718,6 @@ class gsAPI{
 		}
 	}
 	
-	/*
-	* Returns a list of favorites from the user.
-	
-	TODO: Sort by newest at the top.
-	
-	Requirements: session
-	*/	
-	public function getUserFavoriteSongs($limit=null){
-		if (empty($this->session)){
-			trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-			return false;
-		}
-		
-		$return = self::apiCall('getUserFavoriteSongs',array('sessionID'=>$this->session, 'limit'=>$limit));
-		if (isset($return['decoded']['result'])) {
-			return $return['decoded']['result'];
-		} else {
-			return false;
-        }
-	}
-		
 	/*
 	* Returns the Country from the IP Address it was requested from
 	
