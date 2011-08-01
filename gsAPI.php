@@ -402,7 +402,7 @@ class gsAPI{
 			return false;
 		}
 		
-		$return = self::apiCall('getSongsInfo',array('songID'=>$song));
+		$return = self::apiCall('getSongsInfo',array('songIDs'=>$song));
 		if (isset($return['decoded']['result']['songs'][0]))
 			return $return['decoded']['result']['songs'][0];
 		else
