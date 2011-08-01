@@ -402,9 +402,9 @@ class gsAPI{
 			return false;
 		}
 		
-		$return = self::apiCall('getSongInfoEx',array('songID'=>$song));
-		if (isset($return['decoded']['result']))
-			return $return['decoded']['result'];
+		$return = self::apiCall('getSongsInfo',array('songID'=>$song));
+		if (isset($return['decoded']['result']['songs'][0]))
+			return $return['decoded']['result']['songs'][0];
 		else
 			return false;
 	}
@@ -761,11 +761,10 @@ class gsAPI{
 		
 		$return = self::apiCall('getSongSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page, 'country'=>$country));
         if (isset($return['decoded']['result']['songs'])) {
-			return $return['decoded']['result'];
+			return $return['decoded']['result']['songs'];
         } else {
 			return false;
         }
-		
 	} 
 	
 	/*
@@ -782,14 +781,12 @@ class gsAPI{
 			return false;
 		}
 		
-		$return = self::apiCall('getArtistSearchResults',array('query'=>$query,'limit'=>$limit,'page'=>$page));
-		if (isset($return['decoded']['result']['artists'])) {
-			//foreach($return['decoded']['result']['artists'] AS &$artst)
-			//	$artst['GroovesharkLink'] = self::$listen_host."#/artist/".preg_replace("/[^\w]+/","+",$artst['ArtistName'])."/".$artst['ArtistID'];
-			return $return['decoded']['result'];
-		} else {
+		$return = self::apiCall('getArtistSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
+        if (isset($return['decoded']['result']['artists'])) {
+			return $return['decoded']['result']['artists'];
+        } else {
 			return false;
-		}		
+        }
 	} 
 	
 	/*
@@ -803,21 +800,15 @@ class gsAPI{
 	*/
 	public static function getAlbumSearchResults($query, $limit=null, $page=null){
 		if (empty($query)){
-			trigger_error(__FUNCTION__." requires a query. No query was found.",E_USER_ERROR);
 			return false;
 		}
 		
-		$return = self::apiCall('getAlbumSearchResults',array('query'=>$query,'limit'=>$limit,'page'=>$page));
-		if (isset($return['decoded']['result']['albums'])) {
-			/*foreach($return['decoded']['result']['albums'] AS &$albm){
-				if (!empty($albm['CoverArtFilename']))
-					$albm['CoverArtLink'] = self::$pic_host.$albm['CoverArtFilename']; //add filename with the actual url to the array
-				$albm['GroovesharkLink'] = self::$listen_host."#/album/".preg_replace("/[^\w]+/","+",$albm['AlbumName'])."/".$albm['AlbumID'];
-			}*/
-			return $return['decoded']['result'];
-		} else {
+		$return = self::apiCall('getAlbumSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
+        if (isset($return['decoded']['result']['albums'])) {
+			return $return['decoded']['result']['albums'];
+        } else {
 			return false;
-		}
+        }
 		
 	} 
 	
@@ -833,21 +824,16 @@ class gsAPI{
 	*/
 	public static function getAlbumSearchResultsWithSongs($query, $limit=null, $page=null){
 		if (empty($query)){
-			trigger_error(__FUNCTION__." requires a query. No query was found.",E_USER_ERROR);
 			return false;
 		}
 		
-		$return = self::apiCall('getAlbumSearchResults',array('query'=>$query,'limit'=>$limit,'page'=>$page));
+		$return = self::apiCall('getAlbumSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
 		if (isset($return['decoded']['result']['albums'])){
 			foreach($return['decoded']['result']['albums'] AS &$albm){
-				/*if (!empty($albm['CoverArtFilename']))
-					$albm['CoverArtLink'] = self::$pic_host.$albm['CoverArtFilename']; //add filename with the actual url to the array
-				$albm['GroovesharkLink'] = self::$listen_host."#/album/".preg_replace("/[^\w]+/","+",$albm['AlbumName'])."/".$albm['AlbumID'];
-				*/
                 $albm['Songs'] = self::getAlbumSongs($albm['AlbumID']);
 				$albm['SongCount'] = count($albm['Songs']);
 			} 
-			return $return['decoded']['result'];
+			return $return['decoded']['result']['albums'];
 		}else
 			return false;
 		

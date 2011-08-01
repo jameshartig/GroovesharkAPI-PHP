@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @author deVolf
+ * @author Karen Zhu
  * @copyright 2011
  */
 
