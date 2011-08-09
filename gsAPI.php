@@ -388,6 +388,28 @@ class gsAPI{
 		else
 			return false;
 	}
+    
+    /*
+	* Returns a songURL from the SongID		
+
+	Requirements: none
+	Static Session
+    Protected Method
+	
+	@param	int	songID
+	*/
+	public static function getSongURLFromSongID($songID){		
+		if (!is_numeric($songID)){
+			trigger_error(__FUNCTION__." requires a valid songID.",E_USER_ERROR);
+			return false;
+		}
+		
+		$return = self::apiCall('getSongURLFromSongID',array('songID'=>$songID));
+		if (isset($return['decoded']['result']['url']))
+			return $return['decoded']['result']['url'];
+		else
+			return false;
+	}
 	
 	/*
 	* Returns any meta data about a song
