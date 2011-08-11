@@ -26,6 +26,7 @@ class gsAPI{
     protected $sessionUserid;
     protected $country;
     public static $headers;
+    public static $lastError;
     
     private static $instance;
 	
@@ -80,8 +81,10 @@ class gsAPI{
 		if (isset($return['decoded']['result']['success']) && $return['decoded']['result']['success'] === true){
 			$this->session = $return['decoded']['result']['sessionID'];
 			return $this->session;
-		}else
-			return false;
+		} else {
+		    gsAPI::$lastError = $return['raw'];
+            return false;
+		}			
 	}
 		
 	/*	
@@ -121,6 +124,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['success'])) {
 			return $return['decoded']['result']['success'];
 		} else {
+            gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	}
@@ -148,6 +152,7 @@ class gsAPI{
             $this->sessionUserid = $user->getUserID();
             return $user;
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	}
@@ -173,6 +178,7 @@ class gsAPI{
 		if (isset($return['decoded']['result'])) {
 			return $return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -200,6 +206,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['songs']) && count($return['decoded']['result']['songs'])>0 ){
 			return $return['decoded']['result']['songs'];
 		} else {
+            gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -231,6 +238,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID']) {
 			return $return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	}
@@ -252,6 +260,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['playlists'])) {
 			return $return['decoded']['result']['playlists'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -274,6 +283,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['playlists'])) {
 			return $return['decoded']['result']['playlists'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -295,6 +305,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result']['songs'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -316,6 +327,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result']['songs'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	}
@@ -343,6 +355,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['success'])) {
 			return $return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -364,8 +377,10 @@ class gsAPI{
 		$return = self::apiCall('getSongIDFromTinysongBase62',array('base62'=>$base));
 		if (isset($return['decoded']['result']['songID']))
 			return $return['decoded']['result']['songID'];
-		else
-			return false;
+		else {
+			gsAPI::$lastError = $return['raw'];
+            return false;
+        }
 	}
 	
 	/*
@@ -385,8 +400,10 @@ class gsAPI{
 		$return = self::apiCall('getSongURLFromTinysongBase62',array('base62'=>$base));
 		if (isset($return['decoded']['result']['url']))
 			return $return['decoded']['result']['url'];
-		else
-			return false;
+		else {
+		    gsAPI::$lastError = $return['raw'];
+            return false;
+		}			
 	}
     
     /*
@@ -407,8 +424,10 @@ class gsAPI{
 		$return = self::apiCall('getSongURLFromSongID',array('songID'=>$songID));
 		if (isset($return['decoded']['result']['url']))
 			return $return['decoded']['result']['url'];
-		else
+		else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
+        }
 	}
 	
 	/*
@@ -427,8 +446,10 @@ class gsAPI{
 		$return = self::apiCall('getSongsInfo',array('songIDs'=>$song));
 		if (isset($return['decoded']['result']['songs'][0]))
 			return $return['decoded']['result']['songs'][0];
-		else
+		else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
+        }
 	}
     
     /*
@@ -457,6 +478,7 @@ class gsAPI{
             }
             return $return['decoded']['result']['songs'];
 		} else {
+            gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	}
@@ -478,6 +500,7 @@ class gsAPI{
 		if (isset($return['decoded']['result'])) {
 			return $return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -499,6 +522,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result']['songs'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	}
@@ -529,6 +553,7 @@ class gsAPI{
 		if (isset($return['decoded']['result'])) {
 			return $return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -591,8 +616,10 @@ class gsAPI{
 		//var_dump($return);
 		if (isset($return['decoded']['result']))
 			return $return['decoded']['result'];
-		else
-			return false;
+		else {
+		    gsAPI::$lastError = $return['raw'];
+        	return false;
+        }
 	}
 	
 	/*
@@ -613,6 +640,7 @@ class gsAPI{
 		if (isset($return['decoded']['result'])) {
 			return (boolean)$return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return -1;
 		}
 	}
@@ -634,6 +662,7 @@ class gsAPI{
 		if (isset($return['decoded']['result'])) {
 			return (boolean)$return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return -1;
 		}
 	}
@@ -655,6 +684,7 @@ class gsAPI{
 		if (isset($return['decoded']['result'])) {
 			return (boolean)$return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return -1;
 		}
 	}
@@ -680,6 +710,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['albums'])) {
 			return $return['decoded']['result'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -706,6 +737,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result']['songs'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -721,6 +753,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result']['songs'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -736,6 +769,7 @@ class gsAPI{
 		if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result']['songs'];
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -759,6 +793,7 @@ class gsAPI{
             $this->country = $return['decoded']['result'];
             return $this->country;
 		} else {
+		    gsAPI::$lastError = $return['raw'];
 			return false;
 		}
 	}
@@ -785,6 +820,7 @@ class gsAPI{
         if (isset($return['decoded']['result']['songs'])) {
 			return $return['decoded']['result']['songs'];
         } else {
+            gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	} 
@@ -807,6 +843,7 @@ class gsAPI{
         if (isset($return['decoded']['result']['artists'])) {
 			return $return['decoded']['result']['artists'];
         } else {
+            gsAPI::$lastError = $return['raw'];
 			return false;
         }
 	} 
@@ -829,6 +866,7 @@ class gsAPI{
         if (isset($return['decoded']['result']['albums'])) {
 			return $return['decoded']['result']['albums'];
         } else {
+            gsAPI::$lastError = $return['raw'];
 			return false;
         }
 		
@@ -856,8 +894,10 @@ class gsAPI{
 				$albm['SongCount'] = count($albm['Songs']);
 			} 
 			return $return['decoded']['result']['albums'];
-		}else
-			return false;
+		} else {
+		    gsAPI::$lastError = $return['raw'];
+        	return false;
+        }
 		
 	}
 	
