@@ -923,7 +923,7 @@ class gsAPI{
 		
         $payload = array('method'=>$method, 'parameters'=>$args, 'header'=>array('wsKey'=>self::$ws_key));
         
-        if ($payload['parameters']['sessionID']) {
+        if (isset($payload['parameters']) && isset($payload['parameters']['sessionID']) && $payload['parameters']['sessionID']) {
             $payload['header']['sessionID'] = $payload['parameters']['sessionID'];
             unset($payload['parameters']['sessionID']);
         }
