@@ -914,6 +914,29 @@ class gsAPI{
 	public function endSession(){
 		return $this->logout();
 	}
+    
+    /*
+    Gets a stream key if you have permissions
+    */
+    public function getStreamKeyStreamServer($songID, $lowBitrate=false) {
+        if (!$songID) {
+            trigger_error(__FUNCTION__." requires a valid songID.", E_USER_ERROR);
+        }
+        if (!$this->country) {
+            trigger_error(__FUNCTION__." requires a valid country. No country was found. Call getCountry()", E_USER_ERROR);
+        }
+        //, 'lowBitrate'=>$lowBitrate
+        $return = self::apiCall('getStreamKeyStreamServer',array('songID'=>$songID, 'country'=>$this->country));
+        if (isset($return['decoded']['result']['StreamKey'])) {
+			$serverURL = parse_url($return['decoded']['result']['url']);
+            $return['decoded']['result']['StreamServerHostname'] = $serverURL['host'];
+            return $return['decoded']['result'];
+        } else {
+            gsAPI::$lastError = $return['raw'];
+			return false;
+        }
+	}
+    }
 	
 	
 	/* 
