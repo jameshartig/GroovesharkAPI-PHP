@@ -925,8 +925,10 @@ class gsAPI{
         if (!$this->country) {
             trigger_error(__FUNCTION__." requires a valid country. No country was found. Call getCountry()", E_USER_ERROR);
         }
-        //, 'lowBitrate'=>$lowBitrate
-        $return = self::apiCall('getStreamKeyStreamServer',array('songID'=>$songID, 'country'=>$this->country));
+        if (!$this->session) {
+            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
+        }
+        $return = self::apiCall('getStreamKeyStreamServer',array('songID'=>$songID, 'country'=>$this->country, 'sessionID'=>$this->session, 'lowBitrate'=>$lowBitrate));
         if (isset($return['decoded']['result']['StreamKey'])) {
 			$serverURL = parse_url($return['decoded']['result']['url']);
             $return['decoded']['result']['StreamServerHostname'] = $serverURL['host'];
