@@ -935,7 +935,6 @@ class gsAPI{
             gsAPI::$lastError = $return['raw'];
 			return false;
         }
-	}
     }
 	
 	
