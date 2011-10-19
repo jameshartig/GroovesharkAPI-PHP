@@ -798,6 +798,15 @@ class gsAPI{
 		}
 	}
 	
+	
+	public function setCountry($country) {
+		if (!$country || !is_array($country)) {
+			trigger_error(__FUNCTION__." requires a valid country. No country was found.", E_USER_ERROR);
+		}
+		$this->country = $country;
+		return $country;
+	}
+	
 	/*
 	* Get search results for a song
 	* This method is access controlled.
