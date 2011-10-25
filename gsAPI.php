@@ -974,6 +974,7 @@ class gsAPI{
         if (self::$headers) {
             curl_setopt($c, CURLOPT_HTTPHEADER, self::$headers);
         }
+            curl_setopt($c, CURLOPT_SSL_VERIFYPEER, 0);
         curl_setopt($c, CURLOPT_TIMEOUT, 10);
 	    curl_setopt($c, CURLOPT_USERAGENT, 'fastest963-GSAPI-PHP');
         curl_setopt($c, CURLOPT_POST, 1);
