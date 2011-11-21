@@ -947,6 +947,56 @@ class gsAPI{
 			return false;
         }
     }
+
+    /*
+     * Marks an existing stream key as played for >30 seconds
+     */
+
+    public function markStreamKeyOver30Secs($streamKey, $streamServerID) {
+        if (!$streamKey) {
+            trigger_error(__FUNCTION__." requires a valid streamKey.", E_USER_ERROR);
+        }
+        if (!$streamServerID) {
+            trigger_error(__FUNCTION__." requires a valid streamServerID.", E_USER_ERROR);
+        }
+        if (!$this->session) {
+            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
+        }
+        $return = self::apiCall('markStreamKeyOver30Secs', array('streamKey'=>$streamKey, 'streamServerID'=>$streamServerID, 'sessionID'=>$this->session));
+        if (isset($return['decoded']['result']['success']) && $return['decoded']['result']['success']) {
+            return $return['decoded']['result'];
+        } else {
+            gsAPI::$lastError = $return['raw'];
+			return false;
+        }
+    }
+
+
+    /*
+     * Marks an song stream as completed
+     */
+
+    public function markSongComplete($songID, $streamKey, $streamServerID) {
+        if (!$songID) {
+            trigger_error(__FUNCTION__." requires a valid songID.", E_USER_ERROR);
+        }
+        if (!$streamKey) {
+            trigger_error(__FUNCTION__." requires a valid streamKey.", E_USER_ERROR);
+        }
+        if (!$streamServerID) {
+            trigger_error(__FUNCTION__." requires a valid streamServerID.", E_USER_ERROR);
+        }
+        if (!$this->session) {
+            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
+        }
+        $return = self::apiCall('markSongComplete', array('songID'=>$songID, 'streamKey'=>$streamKey, 'streamServerID'=>$streamServerID, 'sessionID'=>$this->session));
+        if (isset($return['decoded']['result']['success']) && $return['decoded']['result']['success']) {
+            return $return['decoded']['result'];
+        } else {
+            gsAPI::$lastError = $return['raw'];
+			return false;
+        }
+    }
 	
 	
 	/* 
