@@ -195,7 +195,7 @@ class gsSearch extends gsAPI{
             $this->changed = false;
             
             $this->results = self::performSearch("getSongSearchResults", $query_str, $this->parent->country, max($max, 50));
-            if ($this->results == false) {
+            if ($this->results === false) {
                 return false;
             }
             $this->called = __METHOD__;
@@ -229,7 +229,7 @@ class gsSearch extends gsAPI{
             $this->changed = false;
             
             $this->results = self::performSearch("getArtistSearchResults", $query_str, max($max, 50));
-            if ($this->results == false) {
+            if ($this->results === false) {
                 return false;
             }
             $this->called = __METHOD__;
@@ -263,7 +263,7 @@ class gsSearch extends gsAPI{
             $this->changed = false;
             
             $this->results = self::performSearch("getAlbumSearchResults", $query_str, max($max, 50));
-            if ($this->results == false) {
+            if ($this->results === false) {
                 return false;
             }
             $this->called = __METHOD__;

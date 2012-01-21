@@ -911,10 +911,28 @@ class gsAPI{
 	}
 	
 	/*
-	Basically login is just an alias class for authenticateUser
+	Basically login is just an alias class for authenticateUser but without gsUser requirement
+	 Make sure that password is md5
 	*/	
 	public function login($username, $password){
-		return $this->authenticateUser($username, $password);
+		if (!$this->session){
+			if (!$this->startSession()) {
+                return false;
+			}
+		}
+
+        if (!$username || !$password) {
+            return false;
+        }
+
+		$return = self::apiCall('authenticate',array('login'=>$username, 
+									'password'=>$password, 'sessionID'=>$this->session), true);
+		if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID'] > 0) {
+            return $return['decoded']['result'];
+		} else {
+		    gsAPI::$lastError = $return['raw'];
+			return false;
+        }
 	}
 	
 	/*
