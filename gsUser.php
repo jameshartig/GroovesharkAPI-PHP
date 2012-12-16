@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @author deVolf
+ * @author James Hartig
  * @copyright 2010
  */
 
@@ -21,14 +21,14 @@ class gsUser extends gsAPI{
     private $favorites;
     private $library;
     private $playlists;
-	
-	function gsUser(&$parent=null){
-	   if (!$parent) {
-	       $this->parent = gsAPI::getInstance();
+    
+    function gsUser(&$parent=null){
+       if (!$parent) {
+           $this->parent = gsAPI::getInstance();
        } else {
             $this->parent = $parent;
        }
-	}
+    }
     
     function toArray() {
         $array = array();
@@ -51,14 +51,14 @@ class gsUser extends gsAPI{
     
     public function setUsername($string) {        
         if (preg_match("/^([a-zA-Z0-9]+[\.\-_]?)+[a-zA-Z0-9]+$/",$string) === false){
-		
-			if (strpos($string, "@") !== false) {
-				$this->setEmail($string);
-				return $string;
-			}
-		
-			return false;
-		} else {
+        
+            if (strpos($string, "@") !== false) {
+                $this->setEmail($string);
+                return $string;
+            }
+        
+            return false;
+        } else {
             $this->username = $string;
             return $string;
         }        
@@ -84,20 +84,20 @@ class gsUser extends gsAPI{
     //this method is access controlled
     public function getUserInfoFromUserID() {
         if ($this->getUserID()) {
-    		$return = parent::apiCall('getUserInfoFromUserID', array('userID'=>$this->getUserID()));
-    		if (isset($return['decoded']['result']['UserID'])) {
+            $return = parent::apiCall('getUserInfoFromUserID', array('userID'=>$this->getUserID()));
+            if (isset($return['decoded']['result']['UserID'])) {
                 $this->importUserData($return['decoded']['result']);
-            	return $return['decoded']['result'];
-    		} else {
-    			return false;
+                return $return['decoded']['result'];
+            } else {
+                return false;
             }
         }
     }
     
     public function setUserID($int) {        
         if (!$int || preg_match("/^([0-9]){1,10}$/",$int) === false){
-			return false;
-		} else {
+            return false;
+        } else {
             $this->userid = $int;
             return $int;
         }        
@@ -113,22 +113,22 @@ class gsUser extends gsAPI{
         return null;
     }
     
-	private function getUserIDFromUsername($username = null){
+    private function getUserIDFromUsername($username = null){
         if ($username) {
            $this->setUsername($username);
         }
         if ($this->getUsername()) {
-    		$return = parent::apiCall('getUserIDFromUsername',array('username'=>$this->getUsername()));
-    		if (isset($return['decoded']['result']['UserID'])) {
+            $return = parent::apiCall('getUserIDFromUsername',array('username'=>$this->getUsername()));
+            if (isset($return['decoded']['result']['UserID'])) {
                 $this->setUserID((int)$return['decoded']['result']['UserID']);
-            	return $this->userid;
-    		} else {
-    			return false;
+                return $this->userid;
+            } else {
+                return false;
             }
         } else {
             return false;
         }
-	}
+    }
     
     //1 = Plus, 2 = Anywhere
     public function setLevel($int) {
@@ -226,12 +226,12 @@ class gsUser extends gsAPI{
         }
     }
     
-	private function getUserProfileService(){
+    private function getUserProfileService(){
         if (!$this->getUserID()) {
             return null;
         }
-		return sprintf(parent::$listen_host."#/user/%s/%u",($this->getUsername(false) ? $this->getUsername(false) : "-"),$this->getUserID());
-	}
+        return sprintf(parent::$listen_host."#/user/%s/%u",($this->getUsername(false) ? $this->getUsername(false) : "-"),$this->getUserID());
+    }
     
     public function setPlaylists($array) {
         if (is_array($array)) {

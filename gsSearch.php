@@ -8,67 +8,67 @@
 class gsSearch extends gsAPI{
     
     const MAX_PARALLEL_SEARCHES = 10;
-	
+    
     private $parent;
     private $id = null;
-	private $artist = null;
-	private $album = null;
-	private $title = null;
+    private $artist = null;
+    private $album = null;
+    private $title = null;
     private $changed = true;
-	private $exact;
-	private $results = null;
+    private $exact;
+    private $results = null;
     private $called = "";
-	
+    
     function gsSearch(&$parent=null){
-	   if (!$parent) {
-	       $this->parent = gsAPI::getInstance();
+       if (!$parent) {
+           $this->parent = gsAPI::getInstance();
        } else {
             $this->parent = $parent;
        }
-	}
-	
-	public function setArtist($artist){
+    }
+    
+    public function setArtist($artist){
         $this->changed = true;
-		$this->artist = $artist;
-	}
-	
-	public function setTitle($title){
+        $this->artist = $artist;
+    }
+    
+    public function setTitle($title){
         $this->changed = true;
-		$this->title = $title;
-	}
-	
-	public function setAlbum($album){
+        $this->title = $title;
+    }
+    
+    public function setAlbum($album){
         $this->changed = true;
-		$this->album = $album;
-	}
+        $this->album = $album;
+    }
     
     public function setResults($results) {
         $this->results = $results;
         $this->changed = false;
     }
-	
-	public function clear(){ //clears all the above search params
-		$this->album = null;
-		$this->artist = null;
-		$this->title = null;
-		$this->listing = null;
-		$this->results = null;
+    
+    public function clear(){ //clears all the above search params
+        $this->album = null;
+        $this->artist = null;
+        $this->title = null;
+        $this->listing = null;
+        $this->results = null;
         $this->changed = true;
-	}
+    }
     
     //normalizes search and gets an ID
     public function getUniqueID() {
         if (!$this->id || $this->changed) {            
             $query_str = "";
-    		if (!empty($this->title)){
-    			$query_str .= " s:".$this->title;
-    		}
-    		if (!empty($this->artist)){
-            	$query_str .= " a:".$this->artist;
-     		}
-    		 if (!empty($this->album)){
-            	$query_str .= " l:".$this->album;
-      		}
+            if (!empty($this->title)){
+                $query_str .= " s:".$this->title;
+            }
+            if (!empty($this->artist)){
+                $query_str .= " a:".$this->artist;
+             }
+             if (!empty($this->album)){
+                $query_str .= " l:".$this->album;
+              }
             $query_str =         
             preg_replace("/([\!\?\.\,])[\!\?\.\,]+/", "{1}", //remove multiple !?,. characters
                 str_replace(array("{", "}", "<", ">", "@", "$", "%", "~", "#", "*", "|", "/", "_", ";", "^"), "",//remove stupid characters
@@ -83,16 +83,16 @@ class gsSearch extends gsAPI{
         }
         return $this->id;
     }
-	
+    
     /*public function singleSongSearch() {
         //todo: this
         if (count($songs['songs'])==1 && $page==1){
             return $songs['songs'][0];
         }
-		
+        
         if (!$this->exact) {
-			foreach ($songs['songs'] AS $song){
-			     //check for exact match
+            foreach ($songs['songs'] AS $song){
+                 //check for exact match
                 if (!empty($this->title) && !empty($this->artist) && !empty($this->album)) {
                     if ((strtolower($this->title) === strtolower($song['SongName']) || ((int)$this->title && (int)$this->title === (int)$song['SongID'])) 
                         && (strtolower($this->album) === strtolower($song['AlbumName']) || ((int)$this->album && (int)$this->album === (int)$song['AlbumID'])) 
@@ -134,15 +134,15 @@ class gsSearch extends gsAPI{
                         break;
                     }
                 }
-			}
+            }
         }
     }*/
     
-	private static function performSearch($method, $query, $country=null, $max=null){        
+    private static function performSearch($method, $query, $country=null, $max=null){        
         $results = array();
-  		for($page=1;$page<=2;$page++){
-  		    switch($method) {
-  		        case "getSongSearchResults":
+          for($page=1;$page<=2;$page++){
+              switch($method) {
+                  case "getSongSearchResults":
                     $searchResults = parent::getSongSearchResults($query, $country, ($max ? $max : 91), ($page-1)*90);
                     break;
                 case "getArtistSearchResults":
@@ -152,10 +152,10 @@ class gsSearch extends gsAPI{
                 default:
                     return false;
                     break;
-  		    }
-			
-			if ($searchResults === false || count($searchResults)<1) {
-				break;
+              }
+            
+            if ($searchResults === false || count($searchResults)<1) {
+                break;
             }                
 
             if (count($searchResults) > 90 && (!$max || $max > 100)){
@@ -164,8 +164,8 @@ class gsSearch extends gsAPI{
             
             self::appendResults($searchResults, $results);
             
-			if (count($searchResults) < 90 || ($max && count($results) > $max)) {
-				break;
+            if (count($searchResults) < 90 || ($max && count($results) > $max)) {
+                break;
             }
         }
         if ($max) {
@@ -173,15 +173,15 @@ class gsSearch extends gsAPI{
         } else {
             return $results;
         }
-	}
-    	
-	public function songSearchResults($max = null)
-    {	   
+    }
+        
+    public function songSearchResults($max = null)
+    {       
         //build request
         
         $query_str = $this->buildQuery("song");
         
-		if (empty($query_str)) {
+        if (empty($query_str)) {
             return array();
         }
         
@@ -207,15 +207,15 @@ class gsSearch extends gsAPI{
                 return $this->results;
             }
         }        
-	}
-	
-	public function artistSearchResults()
+    }
+    
+    public function artistSearchResults()
     {
         //build request
         
         $query_str = $this->buildQuery("artist");
         
-		if (empty($query_str)) {
+        if (empty($query_str)) {
             return array();
         }
         
@@ -241,15 +241,15 @@ class gsSearch extends gsAPI{
                 return $this->results;
             }
         }
-	}
-	
-	public function albumSearchResults()
+    }
+    
+    public function albumSearchResults()
     {
         //build request
         
         $query_str = $this->buildQuery("album");
         
-		if (empty($query_str)) {
+        if (empty($query_str)) {
             return array();
         }
         
@@ -279,69 +279,69 @@ class gsSearch extends gsAPI{
     
     private function buildQuery($type) {
         $query_str = "";
-    	if (!empty($this->title) && (!empty($this->artist) || !empty($this->album) || $type == "artist" || $type == "album")){
-			$query_str .= " song:".$this->title;
+        if (!empty($this->title) && (!empty($this->artist) || !empty($this->album) || $type == "artist" || $type == "album")){
+            $query_str .= " song:".$this->title;
             if (!empty($this->artist)){
                 $query_str .= " artist:".$this->artist;
             }
-    		if (!empty($this->album)){
+            if (!empty($this->album)){
                 $query_str .= " album:".$this->album;
-      	  }
-		} else if (!empty($this->artist)) {
+            }
+        } else if (!empty($this->artist)) {
             if (!empty($this->album)){
                 $query_str .= " artist:".$this->artist;
                 $query_str .= " album:".$this->album;
             } else {
                 $query_str .= ($type == "song" || $type == "album" ? " artist:" : "").$this->artist;
             }
-		} else {
+        } else {
             $query_str .= ($this->title ? ($type == "artist" || $type == "album" ? " song:" : "").$this->title : 
                             ($this->album ? ($type == "song" || $type == "artist" ? " album:" : "").$this->album : ""));
-		}
+        }
         $query_str = trim($query_str);
         return $query_str;
     }
-	
-	private static function appendResults($results, &$toResults){
-	    if (!is_array($toResults)) {
-	       $toResults = $results;
-		} else {
-			$start = count($toResults);
+    
+    private static function appendResults($results, &$toResults){
+        if (!is_array($toResults)) {
+           $toResults = $results;
+        } else {
+            $start = count($toResults);
             $i = 0;
-			foreach($results AS $v) {
-				$toResults[($i++)+$start] = $v;
+            foreach($results AS $v) {
+                $toResults[($i++)+$start] = $v;
             }
-		}		
-	}
-	/*
-	//todo build support for >255 chars
-	private static function calculateScore($search,$result,$rank=1,$lesssub=false){
-		$len = strlen($search[0]);
-		$words = count($search[1]);
-		if (isset($result)){
-			$dist = (($dist = levenshtein(strtolower($result),strtolower($search[0])))==0 ? 1 : ($dist>1?(($len*1.3-$dist)/$len):0));
-			if ($words > 1){
-				foreach($search[1] AS $word){
-					if (strlen($word) > 2){
-						$imp = (($len/$len)+(1/$words)); //importance of word
-						if(strpos($result,$word)!==false){
-							if (!$lesssub)
-								$dist += $imp*.1;
-							else
-								$dist += $imp*.2;
-						}else{
-							if (!$lesssub)
-								$dist -= $imp*.3;
-							else
-								$dist -= $imp*.15;
-						}
-					}
-				}
-			}
-			return $dist*$rank;			
-		}
-		return 0;
-	}
+        }        
+    }
+    /*
+    //todo build support for >255 chars
+    private static function calculateScore($search,$result,$rank=1,$lesssub=false){
+        $len = strlen($search[0]);
+        $words = count($search[1]);
+        if (isset($result)){
+            $dist = (($dist = levenshtein(strtolower($result),strtolower($search[0])))==0 ? 1 : ($dist>1?(($len*1.3-$dist)/$len):0));
+            if ($words > 1){
+                foreach($search[1] AS $word){
+                    if (strlen($word) > 2){
+                        $imp = (($len/$len)+(1/$words)); //importance of word
+                        if(strpos($result,$word)!==false){
+                            if (!$lesssub)
+                                $dist += $imp*.1;
+                            else
+                                $dist += $imp*.2;
+                        }else{
+                            if (!$lesssub)
+                                $dist -= $imp*.3;
+                            else
+                                $dist -= $imp*.15;
+                        }
+                    }
+                }
+            }
+            return $dist*$rank;            
+        }
+        return 0;
+    }
     
     public static function parallelCalls($urls) {
         // Create get requests for each URL
@@ -398,7 +398,7 @@ class gsSearch extends gsAPI{
         
         return $res;
     }
-	*/
+    */
 }
 
 ?>

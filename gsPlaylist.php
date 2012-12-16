@@ -1,7 +1,7 @@
 <?php
 
 /**
- * @author Karen Zhu
+ * @author James Hartig
  * @copyright 2011
  */
 
@@ -14,28 +14,28 @@ class gsPlaylist extends gsAPI{
     private $songs;
     private $tsmodified;
     private $user;
-	
-	function gsPlaylist(&$parent=null){
-	   if (!$parent) {
-	       $this->parent = gsAPI::getInstance();
+    
+    function gsPlaylist(&$parent=null){
+       if (!$parent) {
+           $this->parent = gsAPI::getInstance();
        } else {
             $this->parent = $parent;
        }
-	}
+    }
     // get all the info for a playlist
     //YOU MUST CAST BACK INTO gsPlaylist USING importPlaylistData
     public static function getPlaylistInfo($playlistID){
-		if (!is_numeric($playlistID)){
-			return false;
-		}
-		
-		$return = parent::apiCall('getPlaylistInfo',array('playlistID'=>$playlistID));
-		if (isset($return['decoded']['result'])) {
-			return $return['decoded']['result'];
-		} else {
-			return false;
+        if (!is_numeric($playlistID)){
+            return false;
         }
-	}
+        
+        $return = parent::apiCall('getPlaylistInfo',array('playlistID'=>$playlistID));
+        if (isset($return['decoded']['result'])) {
+            return $return['decoded']['result'];
+        } else {
+            return false;
+        }
+    }
     
     function toArray() {
         $array = array();
@@ -50,8 +50,8 @@ class gsPlaylist extends gsAPI{
     
     public function setPlaylistID($id) {
         if (!is_numeric($id)){
-			return false;
-		} else {
+            return false;
+        } else {
             $this->playlistid = $id;
             return $id;
         }
@@ -118,18 +118,18 @@ class gsPlaylist extends gsAPI{
         return self::getPlaylistURLService($this->playlistid);
     }
     
-	public static function getPlaylistURLService($playlistID){
-		if (!is_numeric($playlistID)){
-			return false;
-		}		
-		
-		$return = parent::apiCall('getPlaylistURLFromPlaylistID', array('playlistID' => $playlistID));
-		if (isset($return['decoded']['result'])) {
-			return $return['decoded']['result'];
-		} else {
-			return false;
+    public static function getPlaylistURLService($playlistID){
+        if (!is_numeric($playlistID)){
+            return false;
+        }        
+        
+        $return = parent::apiCall('getPlaylistURLFromPlaylistID', array('playlistID' => $playlistID));
+        if (isset($return['decoded']['result'])) {
+            return $return['decoded']['result'];
+        } else {
+            return false;
         }
-	}
+    }
     
     public function setSongs($songs) {
         if (is_array($songs)) {
