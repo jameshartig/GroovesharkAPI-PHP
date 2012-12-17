@@ -1084,6 +1084,28 @@ class gsAPI{
         }        
         return $final; //be SURE TO put this under the arg songIDs
     }
+
+    /**
+     * Add X-Client-IP to all requests
+     * Whitelisted API keys only
+     */
+    public static function addClientIP($ip = null) {
+        if (empty($ip)) {
+            $ip = $_SERVER['REMOTE_ADDR'];
+        }
+        if (empty(self::$headers)) {
+            self::$headers = array("X-Client-IP: " . $ip);
+        } else {
+            $newHeaders = array();
+            foreach (self::$headers as $header) {
+                if (strpos($header, 'X-Client-IP:') !== 0) {
+                    $newHeaders[] = $header;
+                }
+            }
+            $newHeaders[] = "X-Client-IP: " . $ip;
+            self::$headers = $newHeaders;
+        }
+    }
     
 }
 ?>
