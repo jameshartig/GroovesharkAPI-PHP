@@ -160,21 +160,42 @@ class gsAPI{
     public function authenticate(gsUser $user){
         return $this->authenticateUser($user);
     }
+
+    /*
+    * Retrieves information for the given artist
+
+    Requirements: none
+    Static function
+
+    @param    integer    artistID
+    @deprecated
+    */
+    public static function getArtistInfo($artistID){
+        if (empty($artistID)){
+            return false;
+        }
+
+        return self::getArtistsInfo(array($artistID));
+    }
     
     /*
-    * Retrieves information from the given album
+    * Retrieves information for the given artists
     
     Requirements: none
     Static function
     
-    @param    integer    artistID
+    @param    integer[]    artistIDs
     */
-    public static function getArtistInfo($artistid){
-        if (!is_numeric($artistid)){
+    public static function getArtistsInfo($artistIDs){
+        if (empty($artistIDs)){
             return false;
-        }        
+        }
+
+        if (!is_array($artistIDs)) {
+            $artistIDs = array($artistIDs);
+        }
         
-        $return = self::apiCall('getArtistInfo',array('artistID'=>$artistid));
+        $return = self::apiCall('getArtistsInfo',array('artistIDs' => $artistIDs));
         if (isset($return['decoded']['result'])) {
             return $return['decoded']['result'];
         } else {
