@@ -517,7 +517,7 @@ class gsAPI{
             return false;
         }
         
-        $return = self::apiCall('getAlbumInfo',array('albumID'=>$song));
+        $return = self::apiCall('getAlbumsInfo',array('albumIDs'=>$album));
         if (isset($return['decoded']['result'])) {
             return $return['decoded']['result'];
         } else {
