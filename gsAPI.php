@@ -3,1110 +3,1012 @@
 /**
  * Grooveshark API Class
  * @author James Hartig
- * @copyright 2011
- * Released under GNU General Public License v3 (See LICENSE for license)
+ * @copyright 2013
+ * Released under GNU General Public License v3
  */
 
-/*
+class gsAPI {
 
-Recommended to be called like $gsapi = new gsapi(key,secret)
-YOU MUST SET THE KEY,SECRET EITHER BELOW OR LIKE ABOVE!
+    /**
+     * Your key and secret will be provided by Grooveshark. Fill them in below or pass them to the constructor.
+     */
+    private static $wsKey = "example";
+    private static $wsSecret = "1a79a4d60de6718e8e5b326e338ae533";
 
-Note: even if you are only using the static functions, calling $gsapi = new gsapi(key,secret) will set the key and secret for those as well
+    const API_HOST = "api.grooveshark.com";
+    const API_ENDPOINT = "/ws3.php";
 
-*/
-
-class gsAPI{
-    
-    private static $api_host = "api.grooveshark.com/ws3.php"; //generally don't change this
-    protected static $listen_host = "http://grooveshark.com/"; //change this to preview.grooveshark.com if you are with VIP //this could potentially automatically be done...
-    private static $ws_key;
-    private static $ws_secret;
-    protected $session;
-    protected $sessionUserid;
-    protected $country;
-    public static $headers;
-    public static $lastError;
-    
     private static $instance;
-    
-    /*    
-    * Construct gsapi
-    
-    Requirements: none
-    Static Function
-    */    
-    function gsAPI($key=null,$secret=null){
-        if    (!empty($key))
-            self::$ws_key = $key;
-        if    (!empty($secret))
-            self::$ws_secret = $secret;
-        
-        if (empty(self::$ws_key) || empty(self::$ws_secret))
-            trigger_error("gsapi class requires a valid key and secret.",E_USER_ERROR);
 
-        if (!isset(self::$instance)) {
-            self::$instance = $this;
+    public static $usePHPDNS = false; //if curl dns resolution is failing, set this to true and we will do dns lookup in php
+    private static $cachedHostIP;
+
+    public $sessionID = null;
+    public $country;
+    public static $headers;
+
+    function __construct($key = null, $secret = null, $sessionID = null, $country = null)
+    {
+        if (!empty($key)) {
+            self::$wsKey = $key;
         }
+        if (!empty($secret)) {
+            self::$wsSecret = $secret;
+        }
+        if (!empty($sessionID)) {
+            $this->sessionID = $sessionID;
+        }
+        if (!empty($country)) {
+            $this->country = $country;
+        }
+        
+        if (empty(self::$wsKey) || empty(self::$wsSecret)) {
+            trigger_error("gsAPI class requires a valid key and secret.", E_USER_ERROR);
+        }
+
+        self::$instance = $this;
         self::$headers = array();        
     }
     
-    static function getInstance() {
+    public static function getInstance($key = null, $secret = null, $sessionID = null, $country = null)
+    {
         if (!isset(self::$instance)) {
             $c = __CLASS__;
-            self::$instance = new $c;
+            self::$instance = new $c($key, $secret, $sessionID, $country);
         }        
         return self::$instance;
     }
     
     /*    
-    * Ping Grooveshark to make sure Pickles is sleeping
-    
-    Requirements: none
-    Static Function
-    */    
-    public static function pingService(){
-        return self::apiCall('pingService',array());
+     * Ping Grooveshark to make sure Pickles is sleeping
+     */
+    public static function pingService()
+    {
+        return self::makeCall('pingService', array());
     }
-    
-    /*    
-    * Start a new session
-    
-    Requirements: none
-    Even though this function requires nothing, it is not static
-    */    
-    public function startSession(){
-        $return = self::apiCall('startSession', array(), true);
 
-        if (isset($return['decoded']['result']['success']) && $return['decoded']['result']['success'] === true){
-            $this->session = $return['decoded']['result']['sessionID'];
-            return $this->session;
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }            
-    }
-        
-    /*    
-    * Start a new session provided an existing session key
-    
-    Requirements: none
-    Even though this function requires nothing, it is not static
-    */    
-    public function setSession($session, $userid=false){
-        $this->session = $session;
-        $this->sessionUserid = $userid;
-        return $session;
-    }
-    
-    /*
-    * Returns the current SessionID
-    * It is highly recommended to store this instead of username/token
-    
-    Requirements: session    
-    */
-    public function getSession(){
-       return $this->session;
-    }
-    
-    /*
-    * Ends the current session
-    * Do this if you do not plan on using the user again
-    
-    Requirements: session    
-    */
-    public function logout(){
-        if (empty($this->session)){
-            return false;
-        }
-        
-        $return = self::apiCall('logout', array('sessionID'=>$this->session));
-        if (isset($return['decoded']['result']['success'])) {
-            return $return['decoded']['result']['success'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Authenticate user
-        
-    Requirements: session
-    */
-    public function authenticateUser(gsUser $user){
-        if (!$this->session){
-            if (!$this->startSession()) {
-                return false;
-            }
-        }
-        
-        if ((!$user->getUsername() && !$user->getEmail()) || !$user->getToken()) {
-            return false;
-        }
+    /**
+     * Methods related specifically to sessions
+     * Calls require special access.
+     */
 
-        $return = self::apiCall('authenticate',array('login'=>($user->getUsername() ? $user->getUsername() :  $user->getEmail()), 
-                                    'password'=>$user->getToken(), 'sessionID'=>$this->session), true);
-        if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID'] > 0) {
-            $user->importUserData($return['decoded']['result']);
-            $this->sessionUserid = $user->getUserID();
-            return $user;
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
+    /*
+     * Start a new session
+     * This will save the session as a static variable on the gsAPI class to simplify other methods
+     */
+    public function startSession()
+    {
+        $result = self::makeCall('startSession', array(), 'sessionID', true);
+        if (empty($result)) {
+            return $result;
         }
-    }
-    
-    public function authenticate(gsUser $user){
-        return $this->authenticateUser($user);
+        $this->sessionID = $result;
+        return $result;
     }
 
     /*
-    * Retrieves information for the given artist
-
-    Requirements: none
-    Static function
-
-    @param    integer    artistID
-    @deprecated
+     * Set the current session for use with methods
     */
-    public static function getArtistInfo($artistID){
+    public function setSession($sessionID)
+    {
+       $this->$sessionID = $sessionID;
+    }
+
+    /*
+     * Returns the current SessionID
+     * This should be stored instead of username/token
+     * @deprecated
+    */
+    public function getSession()
+    {
+       return $this->sessionID;
+    }
+
+    /*
+     * Logs out any authenticated user from the current session
+     * This requires a valid sessionID, either statically or as a parameter
+     * Can be called statically or dynamically
+     */
+    public function logout($sessionID = null)
+    {
+        if ((!isset($this) || empty($this->sessionID)) && empty($sessionID)) {
+            return false;
+        }
+        if (empty($sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+
+        $result = self::makeCall('logout', array(), 'success', false, $sessionID);
+        if (empty($result)) {
+            return false;
+        }
+        return $result;
+    }
+    //backwards-compatible
+    //@deprecated
+    public function endSession()
+    {
+        return $this->logout();
+    }
+
+    /*
+    * Returns information about the logged-in user based on the current sessionID
+    */
+    public function getUserInfo()
+    {
+        return self::makeCall('getUserInfo', array(), null, false, $this->sessionID);
+    }
+
+    /*
+     * Set the current country for use with methods
+    */
+    public function setCountry($country)
+    {
+       $this->country = $country;
+    }
+
+    /*
+     * Returns a country object for the given IP.
+     * This should be cached since it won't change.
+     * Call requires session access.
+     * This can be called statically or dynamically
+     * todo: this doesn't match getSession but somehow should...
+     */
+    public function getCountry($ip = null)
+    {
+        //filter_var is 5.2+ only
+        if (!empty($ip) && !filter_var($ip, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            trigger_error("Invalid IP sent to getCountry! Sent: $ip", E_USER_ERROR);
+            return false;
+        }
+        $args = array();
+        if (!empty($ip)) {
+            $args['ip'] = $ip;
+        }
+        $country = self::makeCall('getCountry', $args);
+        if (isset($this) && !empty($country)) {
+            $this->country = $country;
+        }
+        return $country;
+    }
+
+    /**
+     * Methods relating to the logged-in user
+     * Calls require session access.
+     */
+
+    /*
+     * Authenticate a user
+     * Username can be the user's email or username.
+     * Password should be sent unmodified to this method.
+     */
+    public function authenticate($username, $password)
+    {
+        if (empty($username) || empty($password)) {
+            return array();
+        }
+        $args = array('login' => $username,
+                      'password' => md5($password),
+                      );
+        $result = self::makeCall('authenticate', $args, null, true, $this->sessionID);
+        if (empty($result['UserID'])) {
+            return array();
+        }
+        return $result;
+    }
+    //backwards-compatible
+    public function login($username, $password)
+    {
+        return $this->authenticate($username, $password);
+    }
+
+    /*
+     * Get the logged-in user's playlists
+     * Requires a valid sessionID and authenticated user
+     */
+    public function getUserPlaylists($limit = null)
+    {
+        $args = array();
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+        return self::makeCall('getUserPlaylists', $args, 'playlists', false, $this->sessionID);
+    }
+
+    /*
+     * Returns the playlists owned by the given userID
+     */
+    public function getUserPlaylistsByUserID($userID, $limit = null)
+    {
+        if (!is_numeric($userID)){
+            return false;
+        }
+        $args = array('userID' => (int)$userID);
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getUserPlaylistsByUserID', $args, 'playlists', false, $sessionID);
+    }
+
+    /*
+     * Get the logged-in user's library
+     * Requires a valid sessionID and authenticated user
+     */
+    public function getUserLibrary($limit = null)
+    {
+        $args = array();
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+        return self::makeCall('getUserLibrarySongs', $args, 'songs', false, $this->sessionID);
+    }
+    // backwards-compatible version
+    public function getUserLibrarySongs($limit = null)
+    {
+        return self::getUserLibrary($limit);
+    }
+
+    /*
+     * Get the logged-in user's favorites
+     * Requires a valid sessionID and authenticated user
+     */
+    public function getUserFavorites($limit = null)
+    {
+        $args = array();
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+        return self::makeCall('getUserFavoriteSongs', $args, 'songs', false, $this->sessionID);
+    }
+    // backwards-compatible version
+    public function getUserFavoriteSongs($limit = null)
+    {
+        return self::getUserFavoriteSongs($limit);
+    }
+
+    /*
+     * Adds a song to the logged-in user's favorites
+     * Requires a valid sessionID and authenticated user
+     */
+    public function addUserFavoriteSong($songID)
+    {
+        if (!is_numeric($songID)) {
+            return false;
+        }
+
+        return self::makeCall('addUserFavoriteSong', array('songID' => (int)$songID), 'success', false, $this->sessionID);
+    }
+
+    /*
+     * Creates a playlist for the logged-in user
+     */
+    public function createPlaylist($name, $songIDs = null)
+    {
+        if (empty($name)) {
+            return array();
+        }
+        if (is_null($songIDs)) {
+            $songIDs = array();
+        }
+        $args = array('name' => $name,
+                      'songIDs' => $songIDs,
+                      );
+        return self::makeCall('createPlaylist', $args, null, false, $this->sessionID);
+    }
+
+    /*
+     * Adds a song to the end of a playlist
+     */
+    public function addSongToPlaylist($playlistID, $songID)
+    {
+        if (!is_numeric($playlistID) || !is_numeric($songID)){
+            return false;
+        }
+
+        //first we need to retrieve playlist songs then we need to set playlist songs
+        $songs = self::getPlaylistSongs($playlistID);
+        if (!is_array($songs)) {
+            return false; //we couldn't process the songs, look for getPlaylistSongs to return error
+        }
+        $songs[] = $songID;
+
+        return self::setPlaylistSongs($playlistID, $songs, null, false, $this->sessionID);
+    }
+
+    /*
+     * Changes a playlist's songs owned by the logged-in user
+     * returns array('success' => boolean)
+     */
+    public function setPlaylistSongs($playlistID, $songIDs)
+    {
+        if (!is_numeric($playlistID) || !is_array($songIDs)){
+            return array('success' => false);
+        }
+
+        $args = array('playlistID' => (int)$playlistID,
+                      'songIDs' => $songIDs,
+                      );
+        return self::makeCall('setPlaylistSongs', $args, null, false, $this->sessionID);
+    }
+
+    /**
+     * Methods relating to artists/albums/songs
+     */
+
+    /*
+     * Retrieves information for the given artistID
+     * Can be called statically or dynamically
+     */
+    public function getArtistInfo($artistID)
+    {
         if (empty($artistID)){
             return false;
         }
 
-        return self::getArtistsInfo(array($artistID));
-    }
-    
-    /*
-    * Retrieves information for the given artists
-    
-    Requirements: none
-    Static function
-    
-    @param    integer[]    artistIDs
-    */
-    public static function getArtistsInfo($artistIDs){
-        if (empty($artistIDs)){
-            return false;
+        if (isset($this)) {
+            $result = $this->getArtistsInfo(array($artistID));
+        } else {
+            //note: generates a strict warning
+            $result = self::getArtistsInfo(array($artistID));
         }
+        if (empty($result)) {
+            return $result;
+        }
+        return $result[0];
+    }
 
+    /*
+     * Retrieves information for the given artistIDs
+     * Note: not guaranteed to come back in the same order
+     * Can be called statically or dynamically
+     */
+    public function getArtistsInfo($artistIDs, $returnByIDs = false)
+    {
+        if (empty($artistIDs)){
+            return array();
+        }
         if (!is_array($artistIDs)) {
             $artistIDs = array($artistIDs);
         }
-        
-        $return = self::apiCall('getArtistsInfo',array('artistIDs' => $artistIDs));
-        if (isset($return['decoded']['result'])) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-        
-    /*
-    * Get songs on an album from the albumID
-    
-    Return: array { [n]=> array(6) { ["SongID"]=> int ["SongName"]=> string ["ArtistID"]=> int ["ArtistName"]=> string ["AlbumName"]=> string ["Sort"]=> int) }
-    
-    TODO: Make sure Sort returns sorted
-    TODO: better checking of duplicates
-    
-    Requirements: none
-    Static function    
-    
-    @param    integer    albumID
-    @param    integer    limit, optional
-    */
-    public static function getAlbumSongs($albumid, $limit=null){
-        if (!is_numeric($albumid)){
-            return false;
-        }        
-        
-        $return = self::apiCall('getAlbumSongs',array('albumID'=>$albumid,'limit'=>$limit));
-        if (isset($return['decoded']['result']['songs']) && count($return['decoded']['result']['songs'])>0 ){
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Return the user token before doing authorize
-    
-    Requirements: none
-    Static function    
-    */    
-    public static function getUserToken($username,$password){
-        return md5($password);
-    }
-    
-    /*
-    * Returns userInfo from SessionID.
-    * Information returned: IsPremium, UserID,     Username
-    
-    Requirements: session
-    */    
-    public function getUserInfo() {
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        $return = self::apiCall('getUserInfo',array('sessionID'=>$this->session));
 
-        if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID']) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
         }
-    }
-    
-    /* 
-    * Deprecated version of getUserPlaylistsEx
-    
-    Requirements: session
-
-    @param    integer    limit, optional
-    */
-    public function getUserPlaylists($limit=null){        
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        $return = self::apiCall('getUserPlaylists',array('sessionID'=>$this->session, 'limit'=>$limit));
-        if (isset($return['decoded']['result']['playlists'])) {
-            return $return['decoded']['result']['playlists'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns the playlists of the userID given.
-    
-    Requirements: none
-    Static function
-    
-    @param    integer    userID
-    @param    integer    limit, optional
-    */    
-    public static function getUserPlaylistsByUserID($userid, $limit=null){
-        if (!is_numeric($userid)){
-            return false;
-        }        
-        
-        $return = self::apiCall('getUserPlaylistsByUserID',array('userID'=>$userid, 'limit'=>$limit));
-        if (isset($return['decoded']['result']['playlists'])) {
-            return $return['decoded']['result']['playlists'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /* 
-    * getUserLibrary
-    
-    Requirements: session
-
-    @param    integer    limit, optional
-    */
-    public function getUserLibrarySongs($limit=null){        
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        $return = self::apiCall('getUserLibrarySongs',array('sessionID'=>$this->session, 'limit'=>$limit));
-        if (isset($return['decoded']['result']['songs'])) {
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns a list of favorites from the user.
-    
-    TODO: Sort by newest at the top.
-    
-    Requirements: session
-    */    
-    public function getUserFavoriteSongs($limit=null){
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        $return = self::apiCall('getUserFavoriteSongs',array('sessionID'=>$this->session, 'limit'=>$limit));
-        if (isset($return['decoded']['result']['songs'])) {
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Adds a song to the logged-in user's favorites
-        
-    * appears to only return a success parameter        
-
-    Requirements: session
-    
-    @param    integer    songID
-    */
-    public function addUserFavoriteSong($song){
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        if (!is_numeric($song)){
-            return false;
-        }
-        
-        $return = self::apiCall('addUserFavoriteSong',array('sessionID'=>$this->session, 'songID'=>$song));
-        if (isset($return['decoded']['result']['success'])) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns a songID from the Tinysong Base62        
-
-    Requirements: none
-    Static Session
-    
-    @param    string    base62 from tinysong
-    */
-    public static function getSongIDFromTinysongBase62($base){        
-        if (preg_match("/^[A-Za-z0-9]$/",$base)){
-            trigger_error(__FUNCTION__." requires a valid base62 song.",E_USER_ERROR);
-            return false;
-        }
-        
-        $return = self::apiCall('getSongIDFromTinysongBase62',array('base62'=>$base));
-        if (isset($return['decoded']['result']['songID']))
-            return $return['decoded']['result']['songID'];
-        else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns a songURL from the Tinysong Base62        
-
-    Requirements: none
-    Static Session
-    
-    @param    string    base62 from tinysong
-    */
-    public static function getSongURLFromTinysongBase62($base){        
-        if (preg_match("/^[A-Za-z0-9]$/",$base)){
-            trigger_error(__FUNCTION__." requires a valid base62 song.",E_USER_ERROR);
-            return false;
-        }
-        
-        $return = self::apiCall('getSongURLFromTinysongBase62',array('base62'=>$base));
-        if (isset($return['decoded']['result']['url']))
-            return $return['decoded']['result']['url'];
-        else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }            
-    }
-    
-    /*
-    * Returns a songURL from the SongID        
-
-    Requirements: none
-    Static Session
-    Protected Method
-    
-    @param    int    songID
-    */
-    public static function getSongURLFromSongID($songID){        
-        if (!is_numeric($songID)){
-            trigger_error(__FUNCTION__." requires a valid songID.",E_USER_ERROR);
-            return false;
-        }
-        
-        $return = self::apiCall('getSongURLFromSongID',array('songID'=>$songID));
-        if (isset($return['decoded']['result']['url']))
-            return $return['decoded']['result']['url'];
-        else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns any meta data about a song
-
-    Requirements: none
-    Static Session
-    
-    @param    integer    songID
-    */
-    public static function getSongInfo($song){        
-        if (!is_numeric($song)){
-            return false;
-        }
-        
-        $return = self::apiCall('getSongsInfo',array('songIDs'=>$song));
-        if (isset($return['decoded']['result']['songs'][0]))
-            return $return['decoded']['result']['songs'][0];
-        else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns any meta data about songs
-
-    Requirements: none
-    Static Session
-    
-    @param    array    songIDs
-    */
-    public static function getSongsInfo($songs, $returnByIds=false){        
-        if (!array($songs) || count($songs)<1){
-            return false;
-        }
-        
-        $return = self::apiCall('getSongsInfo',array('songIDs'=>self::formatSongIDs($songs)));
-        if (isset($return['decoded']['result']['songs'])) {
-            if ($returnByIds) {
-                $songs = array();
-                foreach ($return['decoded']['result']['songs'] as $song) {
-                    if (isset($song['SongID'])) {
-                        $songs[$song['SongID']] = $song;
-                    }
+        $result = self::makeCall('getArtistsInfo', array('artistIDs' => $artistIDs), 'artists', false, $sessionID);
+        if ($returnByIDs) {
+            $artistsKeyed = array();
+            foreach ($result as $artist) {
+                if (!empty($artist['ArtistID'])) {
+                    $artistsKeyed[$artist['ArtistID']] = $artist;
                 }
-                return $songs;
             }
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
+            return $artistsKeyed;
         }
-    }
-    
-    /*
-    * Returns any meta data about an album
-
-    Requirements: none
-    Static Session
-    
-    @param    integer    albumID
-    */
-    public static function getAlbumInfo($album){        
-        if (!is_numeric($album)){
-            return false;
-        }
-        
-        $return = self::apiCall('getAlbumsInfo',array('albumIDs'=>$album));
-        if (isset($return['decoded']['result'])) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns songs in a playlist
-
-    Requirements: none
-    Static Session
-    
-    @param    integer    playlistID
-    */
-    public static function getPlaylistSongs($playlistID, $limit=null){
-        if (!is_numeric($playlistID)){
-            return false;
-        }
-        
-        $return = self::apiCall('getPlaylistSongs', array('playlistID'=>$playlistID, 'limit'=>$limit));
-        if (isset($return['decoded']['result']['songs'])) {
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Creates a playlist under the logged in user
-    
-    Requirements: session
-    
-    @param    string    playlistName (Unique)
-    @param    array    songs, integer array of songIDs
-    */
-    public function createPlaylist($name, $songs){
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        if (empty($name)){
-            return false;
-        }
-        
-        if (!array($songs) || count($songs)<1){
-            return false;
-        }
-        $return = self::apiCall('createPlaylist',array('sessionID'=>$this->session, 'name'=>$name, 'songIDs'=>self::formatSongIDs($songs)));
-        //var_dump($return);
-        if (isset($return['decoded']['result'])) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Adds a song to the tail-end of a playlist
-    
-    Requirements: session
-    
-    @param    integer    playlistID
-    @param    integer    songID
-    */
-    public function addSongToPlaylist($playlist,$song){
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        if (!is_numeric($playlist)){
-            return false;
-        }
-        
-        if (!is_numeric($song)){
-            return false;
-        }
-        
-        //first we need to retrieve playlist songs then we need to set playlist songs
-        $songs = self::getPlaylistSongs($playlist);
-        if (!is_array($songs))
-            return false; //we couldn't process the songs, look for getPlaylistSongs to return error
-
-        $songs[] = $song;
-        
-        return $this->setPlaylistSongs($playlist, $songs);        
-    }
-    
-    /*
-    * Changes the Playlist songs
-    
-    Requirements: session
-    
-    @param    integer    playlistID
-    @param    array    songs, integer array of songIDs
-    */
-    public function setPlaylistSongs($playlist,$songs){
-        if (empty($this->session)){
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.",E_USER_ERROR);
-            return false;
-        }
-        
-        if (!is_numeric($playlist)){
-            return false;
-        }
-        
-        if (!array($songs) || count($songs)<1){
-            return false;
-        }
-
-        $return = self::apiCall('setPlaylistSongs',array('sessionID'=>$this->session, 'playlistID'=>$playlist, 'songIDs'=>self::formatSongIDs($songs)));
-        //var_dump($return);
-        if (isset($return['decoded']['result']))
-            return $return['decoded']['result'];
-        else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns whether a song exists or not.
-    * This is commonly used internally by this class
-    
-    Requirements: none
-    static function
-    
-    @param    integer    songID
-    */
-    public static function getDoesSongExist($song){
-        if (!is_numeric($song)) {
-            return false;
-        }
-        
-        $return = self::apiCall('getDoesSongExist',array('songID'=>$song));
-        if (isset($return['decoded']['result'])) {
-            return (boolean)$return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return -1;
-        }
-    }
-    
-    /*
-    * Returns whether an artist exists or not.
-    
-    Requirements: none
-    static function
-    
-    @param    integer    artistID
-    */
-    public static function getDoesArtistExist($artist){
-        if (!is_numeric($artist)) {
-            return false;
-        }
-        
-        $return = self::apiCall('getDoesArtistExist',array('artistID'=>$artist));
-        if (isset($return['decoded']['result'])) {
-            return (boolean)$return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return -1;
-        }
+        return $result;
     }
 
     /*
-    * Returns whether an album exists or not.
-    
-    Requirements: none
-    static function
-    
-    @param    integer    albumID
-    */
-    public static function getDoesAlbumExist($album){
-        if (!is_numeric($album)) {
-            return false;
-        }
-        
-        $return = self::apiCall('getDoesAlbumExist',array('albumID'=>$album));
-        if (isset($return['decoded']['result'])) {
-            return (boolean)$return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return -1;
-        }
-    }
-    
-    /*
-    * Returns a list of an artist's albums
-    
-    Requirements: none
-    static function
-    
-    Returns an array with pager subarray and songs subarray
-    
-    */
-    public static function getArtistAlbums($artist, $verified=false){
-        if (!is_numeric($artist)){
-            return false;
-        }
-        if ($verified) {
-            $return = self::apiCall('getArtistVerifiedAlbums',array('artistID'=>$artist));
-        } else {
-            $return = self::apiCall('getArtistAlbums',array('artistID'=>$artist));
-        }
-        if (isset($return['decoded']['result']['albums'])) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    Alias class for getArtistAlbums with verified true
-    */
-    public static function getArtistVerifiedAlbums($artist){
-        return self::getArtistAlbums($artist, true);
-    }
-    
-    /*
-    * Returns the top 100 songs for an artist
-    
-    Requirements: none
-    Static function
-    */     
-    public static function getArtistPopularSongs($artist){
-        if (!is_numeric($artist)){
-            return false;
-        }
-        
-        $return = self::apiCall('getArtistPopularSongs',array('artistID'=>$artist));
-        if (isset($return['decoded']['result']['songs'])) {
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * A list of Popular Songs from Today
-    
-    Requirements: none
-    Static function
-    */     
-    public static function getPopularSongsToday($limit=null){    
-        $return = self::apiCall('getPopularSongsToday',array('limit'=>$limit));
-        if (isset($return['decoded']['result']['songs'])) {
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * A list of Popular Songs from Month
-    
-    Requirements: none
-    Static function
-    */     
-    public static function getPopularSongsMonth($limit=null){    
-        $return = self::apiCall('getPopularSongsMonth',array('limit'=>$limit));
-        if (isset($return['decoded']['result']['songs'])) {
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    * Returns the Country from the IP Address it was requested from
-    
-    Requirements: session, extended access
-    */
-    public function getCountry($ip = false){
-       
-       if (!$this->session) {
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
-        }
-        if (!$ip) {
-            $ip = $_SERVER['REMOTE_ADDR'];
-        }
-        $return = self::apiCall('getCountry', array('sessionID'=>$this->session, 'ip'=>$ip));
-        /* this method has not yet been tested for the result set */
-        if (isset($return['decoded']['result'])){
-            $this->country = $return['decoded']['result'];
-            return $this->country;
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    
-    public function setCountry($country) {
-        if (!$country || !is_array($country)) {
-            trigger_error(__FUNCTION__." requires a valid country. No country was found.", E_USER_ERROR);
-        }
-        $this->country = $country;
-        return $country;
-    }
-    
-    /*
-    * Get search results for a song
-    * This method is access controlled.
-    
-    Requirements: extended access
-    Static Method
-    
-    Returns an array with songs subarray
-    */
-    protected static function getSongSearchResults($query, $country, $limit=null, $page=null){
-        if (empty($query)){
-            return false;
-        }
-        
-        if (!$country) {
-            trigger_error(__FUNCTION__." requires a valid country. No country was found.", E_USER_ERROR);
-        }
-        
-        $return = self::apiCall('getSongSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page, 'country'=>$country));
-        if (isset($return['decoded']['result']['songs'])) {
-            return $return['decoded']['result']['songs'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    } 
-    
-    /*
-    * Get search results for an artist name
-    * This method is access controlled.
-    
-    Requirements: extended access
-    Static Method
-    
-    Returns an array with pager subarray and songs subarray
-    */
-    public static function getArtistSearchResults($query, $limit=null, $page=null){
-        if (empty($query)){
-            return false;
-        }
-        
-        $return = self::apiCall('getArtistSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
-        if (isset($return['decoded']['result']['artists'])) {
-            return $return['decoded']['result']['artists'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    } 
-    
-    /*
-    * Get search results for an album name
-    * This method is access controlled.
-    
-    Requirements: extended access
-    Static Method
-    
-    Returns an array with pager subarray and songs subarray
-    */
-    public static function getAlbumSearchResults($query, $limit=null, $page=null){
-        if (empty($query)){
-            return false;
-        }
-        
-        $return = self::apiCall('getAlbumSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
-        if (isset($return['decoded']['result']['albums'])) {
-            return $return['decoded']['result']['albums'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-        
-    } 
-    
-    /*
-    * Get search results for an album name
-    * This method is access controlled.
-    * This method contains an additional parameter for the songs.
-    
-    Requirements: extended access
-    Static Method
-    
-    Returns an array with pager subarray and songs subarray
-    */
-    public static function getAlbumSearchResultsWithSongs($query, $limit=null, $page=null){
-        if (empty($query)){
-            return false;
-        }
-        
-        $return = self::apiCall('getAlbumSearchResults',array('query'=>$query, 'limit'=>$limit, 'page'=>$page));
-        if (isset($return['decoded']['result']['albums'])){
-            foreach($return['decoded']['result']['albums'] AS &$albm){
-                $albm['Songs'] = self::getAlbumSongs($albm['AlbumID']);
-                $albm['SongCount'] = count($albm['Songs']);
-            } 
-            return $return['decoded']['result']['albums'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-        
-    }
-    
-    /*
-    Basically login is just an alias class for authenticateUser but without gsUser requirement
-     Make sure that password is md5
-    */    
-    public function login($username, $password){
-        if (!$this->session){
-            if (!$this->startSession()) {
-                return false;
-            }
-        }
-
-        if (!$username || !$password) {
-            return false;
-        }
-
-        $return = self::apiCall('authenticate',array('login'=>$username, 
-                                    'password'=>$password, 'sessionID'=>$this->session), true);
-        if (isset($return['decoded']['result']['UserID']) && $return['decoded']['result']['UserID'] > 0) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-    
-    /*
-    Another alias class for logout
-    */
-    public function endSession(){
-        return $this->logout();
-    }
-    
-    /*
-    Gets a stream key if you have permissions
-    */
-    public function getStreamKeyStreamServer($songID, $lowBitrate=false) {
-        if (!$songID) {
-            trigger_error(__FUNCTION__." requires a valid songID.", E_USER_ERROR);
-        }
-        if (!$this->country) {
-            trigger_error(__FUNCTION__." requires a valid country. No country was found. Call getCountry()", E_USER_ERROR);
-        }
-        if (!$this->session) {
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
-        }
-        $return = self::apiCall('getStreamKeyStreamServer',array('songID'=>$songID, 'country'=>$this->country, 'sessionID'=>$this->session, 'lowBitrate'=>$lowBitrate));
-        if (isset($return['decoded']['result']['StreamKey'])) {
-            $serverURL = parse_url($return['decoded']['result']['url']);
-            $return['decoded']['result']['StreamServerHostname'] = $serverURL['host'];
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
-            return false;
-        }
-    }
-
-    /*
-     * Marks an existing stream key as played for >30 seconds
+     * Returns a songID from the Tinysong Base62
+     * Requires special access.
+     * Can be called statically or dynamically
      */
-
-    public function markStreamKeyOver30Secs($streamKey, $streamServerID) {
-        if (!$streamKey) {
-            trigger_error(__FUNCTION__." requires a valid streamKey.", E_USER_ERROR);
-        }
-        if (!$streamServerID) {
-            trigger_error(__FUNCTION__." requires a valid streamServerID.", E_USER_ERROR);
-        }
-        if (!$this->session) {
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
-        }
-        $return = self::apiCall('markStreamKeyOver30Secs', array('streamKey'=>$streamKey, 'streamServerID'=>$streamServerID, 'sessionID'=>$this->session));
-        if (isset($return['decoded']['result']['success']) && $return['decoded']['result']['success']) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
+    public function getSongIDFromTinysongBase62($base)
+    {
+        if (!preg_match("/^[A-Za-z0-9]+$/", $base)) {
             return false;
         }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getSongIDFromTinysongBase62', array('base62' => $base), 'songID', false, $sessionID);
+    }
+
+    /*
+     * Returns the Grooveshark URL for a Tinysong Base62
+     * Requires special access.
+     * Can be called statically or dynamically
+     */
+    public function getSongURLFromTinysongBase62($base)
+    {
+        if (!preg_match("/^[A-Za-z0-9]+$/", $base)) {
+            return false;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getSongURLFromTinysongBase62',array('base62' => $base), 'url', false, $sessionID);
+    }
+
+    /*
+     * Returns a Grooveshark URL for the given SongID
+     * Requires special access.
+     * Can be called statically or dynamically
+     */
+    public function getSongURLFromSongID($songID)
+    {
+        if (!is_numeric($songID)){
+            return false;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getSongURLFromSongID', array('songID' => (int)$songID), 'url', false, $sessionID);
+    }
+
+    /*
+    * Returns metadata about the given songID
+    */
+    public static function getSongInfo($songID)
+    {
+        if (!is_numeric($songID)) {
+            return array();
+        }
+
+        $result = self::getSongsInfo(array($songID));
+        if (empty($result)) {
+            return $result;
+        }
+        return $result[0];
+    }
+
+    /*
+     * Returns metadata about multiple songIDs
+     * Note: not guaranteed to come back in the same order
+     * if returnByIDs is true, the songs are returned in a array keyed by songID
+     */
+    public function getSongsInfo($songIDs, $returnByIDs = false)
+    {
+        if (empty($songIDs)) {
+            return array();
+        }
+        if (!is_array($songIDs)) {
+            $songIDs = array($songIDs);
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        $result = self::makeCall('getSongsInfo', array('songIDs' => $songIDs), 'songs', false, $sessionID);
+        if (empty($result)) {
+            return $result;
+        }
+        if ($returnByIDs) {
+            $songsKeyed = array();
+            foreach ($result as $song) {
+                if (!empty($song['SongID'])) {
+                    $songsKeyed[$song['SongID']] = $song;
+                }
+            }
+            return $songsKeyed;
+        }
+        return $result;
+    }
+
+    /*
+     * Returns metadata about the given albumID
+     */
+    public function getAlbumInfo($albumID)
+    {
+        if (!is_numeric($albumID)) {
+            return array();
+        }
+
+        if (isset($this)) {
+            $result = $this->getAlbumsInfo(array($albumID));
+        } else {
+            $result = self::getAlbumsInfo(array($albumID));
+        }
+        if (empty($result)) {
+            return $result;
+        }
+        return $result[0];
+    }
+
+    /*
+     * Returns metadata about multiple albumIDs
+     * Note: not guaranteed to come back in the same order
+     * if returnByIDs is true, the songs are returned in a array keyed by AlbumID
+     */
+    public function getAlbumsInfo($albumIDs, $returnByIDs = false)
+    {
+        if (empty($albumIDs)) {
+            return array();
+        }
+        if (!is_array($albumIDs)) {
+            $albumIDs = array($albumIDs);
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        $result = self::makeCall('getAlbumsInfo', array('albumIDs' => $albumIDs), 'albums', false, $sessionID);
+        if (empty($result)) {
+            return $result;
+        }
+        if ($returnByIDs) {
+            $albumsKeyed = array();
+            foreach ($result as $album) {
+                if (!empty($album['AlbumID'])) {
+                    $albumsKeyed[$album['AlbumID']] = $album;
+                }
+            }
+            return $albumsKeyed;
+        }
+        return $result;
+    }
+
+    /*
+     * Get songs on a given albumID
+     */
+    public function getAlbumSongs($albumID, $limit = null)
+    {
+        if (!is_numeric($albumID)) {
+            return array();
+        }
+
+        $args = array('albumID' => (int)$albumID);
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getAlbumSongs', $args, 'songs', false, $sessionID);
+    }
+
+    /*
+     * Get songs on a given playlistID
+     */
+    public function getPlaylistSongs($playlistID, $limit = null)
+    {
+        if (!is_numeric($playlistID)) {
+            return array();
+        }
+
+        $args = array('playlistID' => (int)$playlistID);
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getPlaylistSongs', $args, 'songs', false, $sessionID);
+    }
+
+    /*
+     * Returns whether a given songID exists or not.
+     * Returns array('exists' => boolean)
+     */
+    public function getDoesSongExist($songID)
+    {
+        $return = array('exists' => false);
+        if (!is_numeric($songID)) {
+            return $return;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        $result = self::makeCall('getDoesSongExist', array('songID' => $songID), false, false, $sessionID);
+        if (isset($result['result'])) {
+            $return['exists'] = $result['result'];
+        }
+        return $return;
+    }
+
+    /*
+     * Returns whether a given artistID exists or not.
+     * Returns array('exists' => boolean)
+     */
+    public function getDoesArtistExist($artistID)
+    {
+        $return = array('exists' => false);
+        if (!is_numeric($artistID)) {
+            return $return;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        $result = self::makeCall('getDoesArtistExist', array('artistID' => $artistID), false, false, $sessionID);
+        if (isset($result['result'])) {
+            $return['exists'] = $result['result'];
+        }
+        return $return;
+    }
+
+    /*
+     * Returns whether a given albumID exists or not.
+     * Returns array('exists' => boolean)
+     */
+    public function getDoesAlbumExist($albumID)
+    {
+        $return = array('exists' => false);
+        if (!is_numeric($albumID)) {
+            return $return;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        $result = self::makeCall('getDoesAlbumExist', array('albumID' => $albumID), false, false, $sessionID);
+        if (isset($result['result'])) {
+            $return['exists'] = $result['result'];
+        }
+        return $return;
+    }
+
+    /*
+     * Returns a list of an artistID's albums
+     * Optionally allows you to get only the verified albums
+     */
+    public function getArtistAlbums($artistID, $verified = false)
+    {
+        if (!is_numeric($artistID)){
+            return false;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+
+        $args = array('artistID' => (int)$artistID);
+        if ($verified) {
+            $result = self::makeCall('getArtistVerifiedAlbums', $args, 'albums', false, $sessionID);
+        } else {
+            $result = self::makeCall('getArtistAlbums', $args, 'albums', false, $sessionID);
+        }
+        return $result;
+    }
+
+    /*
+     * Alias class for getArtistAlbums with verified true
+     */
+    public function getArtistVerifiedAlbums($artistID)
+    {
+        if (isset($this)) {
+            return $this->getArtistAlbums($artistID, true);
+        } else {
+            return self::getArtistAlbums($artistID, true);
+        }
+    }
+
+    /*
+     * Returns the top 100 songs for an artistID
+     */
+    public function getArtistPopularSongs($artistID)
+    {
+        if (!is_numeric($artistID)){
+            return false;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getArtistPopularSongs', array('artistID' => (int)$artistID), 'songs', false, $sessionID);
+    }
+
+    /*
+     * Returns a list of today's popular songs
+     */
+    public function getPopularSongsToday($limit = null)
+    {
+        $args = array();
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getPopularSongsToday', $args, 'songs', false, $sessionID);
+    }
+
+    /*
+     * Returns a list of today's popular songs
+     */
+    public function getPopularSongsMonth($limit = null)
+    {
+        $args = array();
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getPopularSongsMonth', $args, 'songs', false, $sessionID);
+    }
+
+    /*
+     * Get search results for a song
+     * This method is access controlled.
+     */
+    public function getSongSearchResults($query, $country = null, $limit = null, $page = null)
+    {
+        if (empty($query)){
+            return array();
+        }
+        //todo: remove isset($this) check
+        if ((!isset($this) || empty($this->country)) && empty($country)) {
+            trigger_error("getSongSearchResults requires a country. Make sure you call getCountry or setCountry!", E_USER_ERROR);
+            return array();
+        }
+        if (empty($country)) {
+            $country = $this->country;
+        }
+
+        $args = array('query' => $query,
+                      'country' => $this->country,
+                      );
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+        if (!empty($page)) {
+            $page = (int)$page;
+            if (isset($limit)) {
+                $offset = ($page - 1) * (int)$limit;
+            } else {
+                $offset = ($page - 1) * 100;
+            }
+            if ($offset > 0) {
+                $args['offset'] = $offset;
+            }
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getSongSearchResults', $args, 'songs', false, $sessionID);
+    }
+
+    /*
+     * Get search results for an artist name
+     * This method is access controlled.
+     * To see if there is more than x artists, send a limit of x+1.
+     */
+    public function getArtistSearchResults($query, $limit = null, $page = null)
+    {
+        if (empty($query)){
+            return array();
+        }
+
+        $args = array('query' => $query);
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+        if (!empty($page)) {
+            $args['page'] = (int)$page;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getArtistSearchResults', $args, 'artists', false, $sessionID);
+    }
+
+    /*
+     * Get search results for an album name
+     * This method is access controlled.
+     * To see if there is more than x albums, send a limit of x+1.
+     */
+    public function getAlbumSearchResults($query, $limit = null, $page = null)
+    {
+        if (empty($query)){
+            return array();
+        }
+
+        $args = array('query' => $query);
+        if (!empty($limit)) {
+            $args['limit'] = (int)$limit;
+        }
+        if (!empty($page)) {
+            $args['page'] = (int)$page;
+        }
+
+        //todo: remove this once we everything is forced dynamically
+        $sessionID = false;
+        if (isset($this) && !empty($this->sessionID)) {
+            $sessionID = $this->sessionID;
+        }
+        return self::makeCall('getAlbumSearchResults', $args, 'albums', false, $sessionID);
+    }
+
+    /*
+     * Get a stream mp3 url for a given songID. This can be used to stream the song once to an mp3-compatible player.
+     * This method is access controlled.
+     */
+    public function getStreamKeyStreamServer($songID, $lowBitrate = false)
+    {
+        if (empty($songID)) {
+            return array();
+        }
+        if (!isset($this) || empty($this->country)) {
+            trigger_error("getStreamKeyStreamServer requires a country. Make sure you call getCountry or setCountry!", E_USER_ERROR);
+            return array();
+        }
+        $args = array('songID' => (int)$songID,
+                      'country' => $this->country,
+                      );
+        if ($lowBitrate) {
+            $args['lowBitrate'] = true;
+        }
+        $result = self::makeCall('getStreamKeyStreamServer', $args, null, false, $this->sessionID);
+        if (empty($result) || empty($result['StreamKey'])) {
+            return array();
+        }
+        $serverURL = parse_url($result['url']);
+        $result['StreamServerHostname'] = $serverURL['host'];
+        return $result;
+    }
+
+    /*
+     * Mark an existing streamKey/streamServerID as being played for >30 seconds
+     * This should be called after 30 seconds of listening, not just at the 30 seconds mark.
+     * returns array('success' => boolean)
+     */
+    public function markStreamKeyOver30Secs($streamKey, $streamServerID)
+    {
+        if (empty($streamKey) || empty($streamServerID)) {
+            return array('success' => false);
+        }
+        $args = array('streamKey' => $streamKey,
+                      'streamServerID' => $streamServerID,
+                      );
+        return self::makeCall('markStreamKeyOver30Secs', $args, null, false, $this->sessionID);
     }
 
 
     /*
      * Marks an song stream as completed
+     * Complete is defined as: Played for greater than or equal to 30 seconds, and having reached the last second either through seeking or normal playback.
+     * returns array('success' => boolean)
      */
-
-    public function markSongComplete($songID, $streamKey, $streamServerID) {
-        if (!$songID) {
-            trigger_error(__FUNCTION__." requires a valid songID.", E_USER_ERROR);
-        }
-        if (!$streamKey) {
-            trigger_error(__FUNCTION__." requires a valid streamKey.", E_USER_ERROR);
-        }
-        if (!$streamServerID) {
-            trigger_error(__FUNCTION__." requires a valid streamServerID.", E_USER_ERROR);
-        }
-        if (!$this->session) {
-            trigger_error(__FUNCTION__." requires a valid session. No session was found.", E_USER_ERROR);
-        }
-        $return = self::apiCall('markSongComplete', array('songID'=>$songID, 'streamKey'=>$streamKey, 'streamServerID'=>$streamServerID, 'sessionID'=>$this->session));
-        if (isset($return['decoded']['result']['success']) && $return['decoded']['result']['success']) {
-            return $return['decoded']['result'];
-        } else {
-            gsAPI::$lastError = $return['raw'];
+    public function markSongComplete($songID, $streamKey, $streamServerID)
+    {
+        if (empty($songID) || empty($streamKey) || empty($streamServerID)) {
             return false;
         }
+        $args = array('songID' => (int)$songID,
+                      'streamKey' => $streamKey,
+                      'streamServerID' => $streamServerID,
+                      );
+        return self::makeCall('markSongComplete', $args, null, false, $this->sessionID);
     }
     
     
     /* 
-    * Private call to grooveshark API, this is where the magic happens!
-    */ 
-    protected static function apiCall($method, $args=array(), $https=false){    
-        
-        $payload = array('method'=>$method, 'parameters'=>$args, 'header'=>array('wsKey'=>self::$ws_key));
-        
-        if (isset($payload['parameters']) && isset($payload['parameters']['sessionID']) && $payload['parameters']['sessionID']) {
-            $payload['header']['sessionID'] = $payload['parameters']['sessionID'];
-            unset($payload['parameters']['sessionID']);
+     * Make a call to the Grooveshark API
+     */
+    private static function makeCall($method, $args = array(), $resultKey = null, $https = false, $sessionID = false){
+
+        $payload = array('method' => $method,
+                         'parameters' => $args,
+                         'header' => array('wsKey' => self::$wsKey),
+                         );
+
+        if (!empty($sessionID)) {
+            $payload['header']['sessionID'] = $sessionID;
+        } else if ($sessionID !== false) {
+            trigger_error("$method requires a valid sessionID.", E_USER_ERROR);
+            return false;
         }
-        
-        $postData = json_encode($payload);
-        $sig = self::createMessageSig($postData, self::$ws_secret);
-        $query_str = "?sig=" . $sig;
-        
-        $url = sprintf('%s://%s',($https === true ? "https" : "http"),self::$api_host.$query_str);
-                
+
         $c = curl_init();
-        curl_setopt($c, CURLOPT_URL, $url);
-        curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
-        curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 4);
-        if (self::$headers) {
-            curl_setopt($c, CURLOPT_HTTPHEADER, self::$headers);
-        }
-            curl_setopt($c, CURLOPT_SSL_VERIFYPEER, 0);
-        curl_setopt($c, CURLOPT_TIMEOUT, 10);
-        curl_setopt($c, CURLOPT_USERAGENT, 'fastest963-GSAPI-PHP');
+        $postData = json_encode($payload);
         curl_setopt($c, CURLOPT_POST, 1);
         curl_setopt($c, CURLOPT_POSTFIELDS, $postData);
-        $result = curl_exec($c);
+
+        $headers = self::$headers;
+        $host = self::API_HOST;
+        if (self::$usePHPDNS) {
+            if (empty(self::$cachedHostIP)) {
+                $records = dns_get_record($host, DNS_A);
+                if (empty($records) || empty($records[0]['ip'])) {
+                    trigger_error("Failed to fetch IP address for $host.", E_USER_ERROR);
+                    return false;
+                }
+                self::$cachedHostIP = $records[0]['ip'];
+            }
+            $headers[] = "Host: $host"; //make sure we sent the host param since we switching to ip-based host
+            $host = self::$cachedHostIP;
+        }
+        if (!empty($headers)) {
+            curl_setopt($c, CURLOPT_HTTPHEADER, $headers);
+        }
+
+        if ($https) {
+            $scheme = "https://";
+        } else {
+            $scheme = "http://";
+        }
+        $sig = self::createMessageSig($postData, self::$wsSecret);
+        $url = $scheme . $host . self::API_ENDPOINT . "?sig=$sig";
+        curl_setopt($c, CURLOPT_URL, $url);
+
+        curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
+        curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 2);
+        curl_setopt($c, CURLOPT_TIMEOUT, 6);
+        curl_setopt($c, CURLOPT_SSL_VERIFYPEER, 0);
+        curl_setopt($c, CURLOPT_USERAGENT, 'fastest963-GroovesharkAPI-PHP-' . self::$wsKey);
+        $return = curl_exec($c);
         $httpCode = curl_getinfo($c, CURLINFO_HTTP_CODE);
         curl_close($c);
-        $decoded = json_decode($result, true);
-    
-        return array('http'=>$httpCode,'raw'=>$result,'decoded'=>$decoded);
+        if ($httpCode != 200) {
+            trigger_error("Unexpected return code from Grooveshark API. Code $httpCode.", E_USER_ERROR);
+            return false;
+        }
+
+        $result = json_decode($return, true);
+        if (is_null($result) || empty($result['result'])) {
+            if (!empty($result['errors'])) {
+                trigger_error("Errors in result from server. Errors: " . print_r($result['errors'], true), E_USER_ERROR);
+            }
+            return false;
+        } else if (!empty($resultKey)) {
+            if (!isset($result['result'][$resultKey])) {
+                return false;
+            }
+            $result = $result['result'][$resultKey];
+        } else if ($resultKey !== false) {
+            $result = $result['result'];
+        }
+        return $result;
     }
     
     /*
-    * Creates the message signature before sending to Grooveshark
-    */
+     * Creates the message signature before sending to Grooveshark
+     */
     private static function createMessageSig($params, $secret){
         return hash_hmac('md5', $params, $secret);
     }
-    
-    /*
-    * Formats the songIDs for use with setPlaylistSongs and other functions.
-    * Has been altered to strip everything but the SongID
-    */
-    private static function formatSongIDs($songs){
-        $final = array();
-        foreach($songs AS $sng){
-            if (is_array($sng) && isset($sng['SongID'])) {
-                $final[] = $sng['SongID'];
-            } elseif (is_array($sng)){
-                foreach($sng AS $k => $v){ //check for if case is not SongID
-                    if (strtolower($k) == 'songid'){
-                        $final[] = $v;
-                        break;
-                    }                        
-                }
-            } else {
-                $final[] = $sng;
-            }
-        }        
-        return $final; //be SURE TO put this under the arg songIDs
-    }
 
-    /**
+    /*
      * Add X-Client-IP to all requests
      * Whitelisted API keys only
      */
