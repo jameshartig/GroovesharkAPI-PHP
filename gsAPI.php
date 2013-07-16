@@ -780,7 +780,7 @@ class gsAPI {
         }
 
         $args = array('query' => $query,
-                      'country' => $this->country,
+                      'country' => $country,
                       );
         if (!empty($limit)) {
             $args['limit'] = (int)$limit;
