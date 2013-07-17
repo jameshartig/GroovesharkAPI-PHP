@@ -91,7 +91,7 @@ class gsAPI {
     */
     public function setSession($sessionID)
     {
-       $this->$sessionID = $sessionID;
+       $this->sessionID = $sessionID;
     }
 
     /*
