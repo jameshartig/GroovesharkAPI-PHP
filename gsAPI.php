@@ -888,6 +888,39 @@ class gsAPI {
     }
 
     /*
+     * Get a stream mp3 url for a given songID. This can be used to stream the song once to an mp3-compatible player.
+     * Anywhere-only or trials
+     * This method is access controlled.
+     * $trialUniqueID is the uniqueID from a trial
+     */
+    public function getSubscriberStreamKey($songID, $lowBitrate = false, $trialUniqueID = null)
+    {
+        if (empty($songID)) {
+            return array();
+        }
+        if (!isset($this) || empty($this->country)) {
+            trigger_error("getSubscriberStreamKey requires a country. Make sure you call getCountry or setCountry!", E_USER_ERROR);
+            return array();
+        }
+        $args = array('songID' => (int)$songID,
+                      'country' => $this->country,
+                      );
+        if ($lowBitrate) {
+            $args['lowBitrate'] = true;
+        }
+        if (!empty($trialUniqueID)) {
+            $args['uniqueID'] = $trialUniqueID;
+        }
+        $result = self::makeCall('getSubscriberStreamKey', $args, null, false, $this->sessionID);
+        if (empty($result) || empty($result['StreamKey'])) {
+            return array();
+        }
+        $serverURL = parse_url($result['url']);
+        $result['StreamServerHostname'] = $serverURL['host'];
+        return $result;
+    }
+
+    /*
      * Mark an existing streamKey/streamServerID as being played for >30 seconds
      * This should be called after 30 seconds of listening, not just at the 30 seconds mark.
      * returns array('success' => boolean)
