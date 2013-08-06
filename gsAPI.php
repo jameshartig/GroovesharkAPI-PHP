@@ -286,6 +286,20 @@ class gsAPI {
     }
 
     /*
+     * Adds a song to the logged-in user's library
+     * Requires a valid sessionID and authenticated user
+     * Songs should be an array of objects each like (songID => 2341, artistID => 124445, albumID => 993284)
+     */
+    public function addUserLibrarySongs($songs)
+    {
+        if (!is_array($songs)) {
+            return false;
+        }
+
+        return self::makeCall('addUserLibrarySongsEx', array('songs' => $songs), 'success', false, $this->sessionID);
+    }
+
+    /*
      * Creates a playlist for the logged-in user
      */
     public function createPlaylist($name, $songIDs = null)
