@@ -822,9 +822,8 @@ class gsAPI {
     /*
      * Get search results for an artist name
      * This method is access controlled.
-     * To see if there is more than x artists, send a limit of x+1.
      */
-    public function getArtistSearchResults($query, $limit = null, $page = null)
+    public function getArtistSearchResults($query, $limit = null)
     {
         if (empty($query)){
             return array();
@@ -833,9 +832,6 @@ class gsAPI {
         $args = array('query' => $query);
         if (!empty($limit)) {
             $args['limit'] = (int)$limit;
-        }
-        if (!empty($page)) {
-            $args['page'] = (int)$page;
         }
 
         //todo: remove this once we everything is forced dynamically
@@ -849,9 +845,8 @@ class gsAPI {
     /*
      * Get search results for an album name
      * This method is access controlled.
-     * To see if there is more than x albums, send a limit of x+1.
      */
-    public function getAlbumSearchResults($query, $limit = null, $page = null)
+    public function getAlbumSearchResults($query, $limit = null)
     {
         if (empty($query)){
             return array();
@@ -860,9 +855,6 @@ class gsAPI {
         $args = array('query' => $query);
         if (!empty($limit)) {
             $args['limit'] = (int)$limit;
-        }
-        if (!empty($page)) {
-            $args['page'] = (int)$page;
         }
 
         //todo: remove this once we everything is forced dynamically
