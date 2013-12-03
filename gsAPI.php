@@ -196,10 +196,21 @@ class gsAPI {
         }
         return $result;
     }
-    //backwards-compatible
+
+    //backwards-compatible (expects a hashed password)
     public function login($username, $password)
     {
-        return $this->authenticate($username, $password);
+        if (empty($username) || empty($password)) {
+            return array();
+        }
+        $args = array('login' => $username,
+                      'password' => $password,
+                      );
+        $result = self::makeCall('authenticate', $args, null, true, $this->sessionID);
+        if (empty($result['UserID'])) {
+            return array();
+        }
+        return $result;
     }
 
     /*
