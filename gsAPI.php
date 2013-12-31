@@ -341,9 +341,13 @@ class gsAPI {
         if (!is_array($songs)) {
             return false; //we couldn't process the songs, look for getPlaylistSongs to return error
         }
-        $songs[] = $songID;
+        $songIDs = array();
+        foreach ($songs as $song) {
+            $songIDs[] = (int)$song['SongID'];
+        }
+        $songIDs[] = $songID;
 
-        return self::setPlaylistSongs($playlistID, $songs, null, false, $this->sessionID);
+        return self::setPlaylistSongs($playlistID, $songIDs);
     }
 
     /*
