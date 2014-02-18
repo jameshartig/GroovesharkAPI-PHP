@@ -47,7 +47,7 @@ class gsAPI {
         }
 
         self::$instance = $this;
-        self::$headers = array();        
+        self::$headers = array('Expect:'); //prevent Expect: 100-continue from being sent (http://us3.php.net/manual/en/function.curl-setopt.php#82418)
     }
     
     public static function getInstance($key = null, $secret = null, $sessionID = null, $country = null)
