@@ -47,7 +47,9 @@ class gsAPI {
         }
 
         self::$instance = $this;
-        self::$headers = array('Expect:'); //prevent Expect: 100-continue from being sent (http://us3.php.net/manual/en/function.curl-setopt.php#82418)
+        self::$headers = array('Expect:', //prevent Expect: 100-continue from being sent (http://us3.php.net/manual/en/function.curl-setopt.php#82418)
+                               'Content-Type: application/json', //don't allow endpoint to think we sent form-encoded
+                               );
     }
     
     public static function getInstance($key = null, $secret = null, $sessionID = null, $country = null)
