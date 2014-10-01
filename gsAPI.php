@@ -1027,6 +1027,9 @@ class gsAPI {
         curl_setopt($c, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($c, CURLOPT_CONNECTTIMEOUT, 2);
         curl_setopt($c, CURLOPT_TIMEOUT, 6);
+        if (self::$usePHPDNS) {
+            curl_setopt($c, CURLOPT_SSL_VERIFYHOST, 0); //need to use this since were changing the IP
+        }
         curl_setopt($c, CURLOPT_SSL_VERIFYPEER, 0);
         curl_setopt($c, CURLOPT_USERAGENT, 'fastest963-GroovesharkAPI-PHP-' . self::$wsKey);
         $return = curl_exec($c);
