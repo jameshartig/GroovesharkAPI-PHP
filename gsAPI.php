@@ -177,19 +177,46 @@ class gsAPI {
      */
 
     /*
+     * Shim for authenticateEx
+     */
+    public function authenticate($username, $password)
+    {
+        return $this->authenticateEx($username, $password);
+    }
+
+    /*
      * Authenticate a user
      * Username can be the user's email or username.
      * Password should be sent unmodified to this method.
      */
-    public function authenticate($username, $password)
+    public function authenticateEx($username, $password)
     {
         if (empty($username) || empty($password)) {
             return array();
         }
         $args = array('login' => $username,
-                      'password' => md5($password),
+                      'password' => $password,
+        );
+        $result = self::makeCall('authenticateEx', $args, null, true, $this->sessionID);
+        if (empty($result['UserID'])) {
+            return array();
+        }
+        return $result;
+    }
+
+    /*
+     * Authenticate a user
+     * Username can be the user's email or username.
+     * Password should be sent unmodified to this method.
+     */
+    public function authenticateToken($token)
+    {
+        if (empty($token)) {
+            return array();
+        }
+        $args = array('token' => $token,
                       );
-        $result = self::makeCall('authenticate', $args, null, true, $this->sessionID);
+        $result = self::makeCall('authenticateToken', $args, null, true, $this->sessionID);
         if (empty($result['UserID'])) {
             return array();
         }
@@ -199,17 +226,7 @@ class gsAPI {
     //backwards-compatible (expects a hashed password)
     public function login($username, $password)
     {
-        if (empty($username) || empty($password)) {
-            return array();
-        }
-        $args = array('login' => $username,
-                      'password' => $password,
-                      );
-        $result = self::makeCall('authenticate', $args, null, true, $this->sessionID);
-        if (empty($result['UserID'])) {
-            return array();
-        }
-        return $result;
+        throw new Exception("Deprecated! Use authenticate instead");
     }
 
     /*
